@@ -8,7 +8,7 @@
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #2196F3; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 5px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 5px; color: white; }
         button:hover { opacity: 0.9; }
         .btn-green { background-color: #4CAF50; }
         .btn-yellow { background-color: #ff9800; color: black; }
@@ -27,7 +27,7 @@
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
 
         <button id="saveSchoolBtn" class="btn-green" style="width: 100%; font-size: 16px; margin-top: 5px;">إضافة المدرسة للقاعدة</button>
-        <button id="cancelEditBtn" style="width: 100%; background: #6c757d; display: none; margin-top: 5px;">إلغاء التعديل</button>
+        <button id="cancelEditBtn" style="width: 100%; background: #6c757d; color: white; display: none; margin-top: 5px;">إلغاء التعديل</button>
         
         <hr style="margin: 20px 0;">
         
@@ -55,7 +55,6 @@
 
         let isEditing = false;
 
-        // زر الحفظ أو التعديل
         document.getElementById("saveSchoolBtn").addEventListener("click", function() {
             const sId = document.getElementById("schoolId").value.trim().toLowerCase();
             const sName = document.getElementById("schoolName").value.trim();
@@ -68,7 +67,7 @@
             const schoolRef = db.collection("schools").doc(sId);
 
             if (isEditing) {
-                // تحديث اسم المدرسة فقط
+                // تحديث اسم المدرسة حصرياً دون إعادة إنشائها
                 schoolRef.update({
                     name: sName
                 }).then(() => {
@@ -79,7 +78,7 @@
                     alert("خطأ في التعديل: " + error.message);
                 });
             } else {
-                // إضافة مدرسة جديدة
+                // إضافة مدرسة جديدة لأول مرة
                 schoolRef.set({
                     name: sName,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -93,7 +92,6 @@
             }
         });
 
-        // دالة لعرض المدارس مع أزرار (دخول، تعديل، حذف)
         function loadSchools() {
             const listDiv = document.getElementById("schoolsList");
             listDiv.innerHTML = "";
@@ -122,16 +120,14 @@
             });
         }
 
-        // الانتقال للوحة التحكم الخاصة بالمدرسة
         window.enterSchool = function(schoolId) {
             localStorage.setItem("currentSchoolId", schoolId);
             window.location.href = "dashboard.html";
         }
 
-        // تفعيل وضع التعديل
         window.editSchool = function(sId, sName) {
             document.getElementById("schoolId").value = sId;
-            document.getElementById("schoolId").disabled =لا; // منع تغيير الكود لأنه مفتاح أساسي
+            document.getElementById("schoolId").disabled = true; // قفل حقل الكود لكي لا يتغير أثناء التعديل
             document.getElementById("schoolName").value = sName;
             
             document.getElementById("formTitle").innerText = "تعديل بيانات المدرسة: " + sId;
@@ -141,7 +137,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // إلغاء التعديل
         document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
 
         function resetForm() {
@@ -154,19 +149,17 @@
             isEditing = false;
         }
 
-        // حذف المدرسة
         window.deleteSchool = function(sId) {
-            if (confirm("هل أنت متأكد من حذف المدرسة (" + sId + ")؟ سيتم حذف كافة بياناتها!")) {
+            if (confirm("هل أنت متأكد من حذف المدرسة (" + sId + ")؟")) {
                 db.collection("schools").doc(sId).delete().then(() => {
                     alert("تم حذف المدرسة بنجاح.");
                     loadSchools();
                 }).catch((error) => {
-                    alert("حدث خطأ أثناء الحذف: " + error.message);
+                    alert("خطأ أثناء الحذف: " + error.message);
                 });
             }
         }
 
-        // تحميل القائمة عند فتح الصفحة
         loadSchools();
     </script>
 </body>
