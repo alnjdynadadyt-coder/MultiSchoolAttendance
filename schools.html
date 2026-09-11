@@ -24,14 +24,9 @@
 <body>
 
 <div class="container">
-    <h2>إدارة المدارس</h2>
+    <h2>🏫 إدارة المدارس</h2>
     <h3>إضافة مدرسة جديدة وحدودها الجغرافية</h3>
     <hr style="margin: 20px 0; border:0; border-top:1px solid #eee;">
-
-    <div class="form-group">
-        <label>معرف المدرسة (ID إنجليزي بدون مسافات، مثال: school1):</label>
-        <input type="text" id="schoolId" placeholder="school1">
-    </div>
 
     <div class="form-group">
         <label>اسم المدرسة الرسمي:</label>
@@ -42,17 +37,12 @@
 
     <div class="form-group">
         <label>خط العرض (Lat):</label>
-        <input type="number" id="lat" step="any" placeholder="31.7312">
+        <input type="number" id="lat" step="any" placeholder="0.0">
     </div>
 
     <div class="form-group">
         <label>خط الطول (Lng):</label>
-        <input type="number" id="lng" step="any" placeholder="44.9801">
-    </div>
-
-    <div class="form-group">
-        <label>نصف القطر المسموح للتسجيل (بالمتر):</label>
-        <input type="number" id="radius" value="100">
+        <input type="number" id="lng" step="any" placeholder="0.0">
     </div>
 
     <button type="button" class="btn-action btn-success" id="saveBtn">💾 حفظ المدرسة في قاعدة البيانات</button>
@@ -62,10 +52,9 @@
     <a href="index.html" class="btn-action btn-back">⬅ العودة إلى لوحة التحكم الرئيسية</a>
 </div>
 
-<!-- البرمجة والأحداث متصلة بشكل سليم تماماً هنا -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
@@ -81,7 +70,7 @@
     const db = getFirestore(app);
     const statusDiv = document.getElementById("status");
 
-    // زر جلب الـ GPS
+    // تفعيل زر جلب الـ GPS
     document.getElementById("gpsBtn").addEventListener("click", () => {
         statusDiv.className = "";
         statusDiv.textContent = "جاري طلب إحداثيات الموقع... يرجى السماح للمتصفح.";
@@ -101,28 +90,22 @@
             },
             (error) => {
                 statusDiv.className = "error";
-                statusDiv.textContent = "⚠ تعذر الحصول على الـ GPS تلقائياً. يمكنك كتابة الإحداثيات يدوياً في الحقول.";
+                statusDiv.textContent = "⚠ تعذر الحصول على الـ GPS تلقائياً. يمكنك كتابة الإحداثيات يدوياً.";
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     });
 
-    // زر حفظ المدرسة في فايربيز
+    // تفعيل زر حفظ المدرسة (مع توليد معرف تلقائي وثبات نصف القطر على 100 متر)
     document.getElementById("saveBtn").addEventListener("click", async () => {
         statusDiv.className = "";
         statusDiv.textContent = "جاري حفظ المدرسة...";
 
-        const id = document.getElementById("schoolId").value.trim();
         const name = document.getElementById("schoolName").value.trim();
         const lat = parseFloat(document.getElementById("lat").value);
         const lng = parseFloat(document.getElementById("lng").value);
-        const radius = parseFloat(document.getElementById("radius").value);
+        const fixedRadius = 100; // ثابت لكل المدارس
 
-        if (!id) {
-            statusDiv.className = "error";
-            statusDiv.textContent = "الرجاء إدخال معرف المدرسة (School ID).";
-            return;
-        }
         if (!name) {
             statusDiv.className = "error";
             statusDiv.textContent = "الرجاء إدخال اسم المدرسة الرسمي.";
@@ -130,23 +113,23 @@
         }
         if (isNaN(lat) || isNaN(lng)) {
             statusDiv.className = "error";
-            statusDiv.textContent = "خط العرض وخط الطول مطلوبة وأرقام صحيحة.";
+            statusDiv.textContent = "خط العرض وخط الطول مطلوبة (عبر الـ GPS أو يدوياً).";
             return;
         }
 
         try {
-            await setDoc(doc(db, "schools", id), {
+            await addDoc(collection(db, "schools"), {
                 name: name,
                 lat: lat,
                 lng: lng,
-                radius: radius
-            }, { merge: true });
+                radius: fixedRadius,
+                createdAt: new Date().toISOString()
+            });
 
             statusDiv.className = "success";
             statusDiv.textContent = "🎉 تم حفظ المدرسة (" + name + ") بنجاح في قاعدة البيانات!";
             
-            // تفريغ الحقول بعد الحفظ
-            document.getElementById("schoolId").value = "";
+            // تفريغ الحقول بعد الحفظ الناجح
             document.getElementById("schoolName").value = "";
             document.getElementById("lat").value = "";
             document.getElementById("lng").value = "";
