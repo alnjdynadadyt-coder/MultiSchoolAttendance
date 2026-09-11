@@ -38,7 +38,7 @@
         <input type="text" id="schoolName" placeholder="مثال: ثانوية الفراهيدي للبنين">
     </div>
 
-    <button type="button" class="btn-action btn-info" id="getLocationBtn">📍 جلب إحداثيات موقعي الحالي (GPS)</button>
+    <button type="button" class="btn-action btn-info" onclick="getGPS()">📍 جلب إحداثيات موقعي الحالي (GPS)</button>
 
     <div class="form-group">
         <label>خط العرض (Lat):</label>
@@ -62,6 +62,43 @@
     <button type="button" class="btn-action btn-back" onclick="window.location.href='index.html'">⬅ العودة إلى لوحة التحكم الرئيسية</button>
 </div>
 
+<!-- دوال الجافاسكريبت المستقلة لضمان الاستجابة -->
+<script>
+    function getGPS() {
+        const statusDiv = document.getElementById("status");
+        statusDiv.className = "";
+        statusDiv.textContent = "جاري طلب إحداثيات الموقع... يرجى السماح للمتصفح بالوصول للموقع.";
+
+        if (!navigator.geolocation) {
+            statusDiv.className = "error";
+            statusDiv.textContent = "متصفحك لا يدعم تحديد الموقع الجغرافي.";
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                document.getElementById("lat").value = position.coords.latitude;
+                document.getElementById("lng").value = position.coords.longitude;
+                statusDiv.className = "success";
+                statusDiv.textContent = "تم بنجاح جلب إحداثيات موقعك الحالي!";
+            },
+            (error) => {
+                statusDiv.className = "error";
+                let msg = "فشل الحصول على الموقع.";
+                if (error.code === error.PERMISSION_DENIED) {
+                    msg = "تم رفض إذن الوصول للموقع. يرجى تفعيله من إعدادات المتصفح/الجهاز.";
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    msg = "معلومات الموقع غير متوفرة حالياً.";
+                } else if (error.code === error.TIMEOUT) {
+                    msg = "ان انتهى الوقت المخصص لطلب الموقع.";
+                }
+                statusDiv.textContent = msg + " (يمكنك إدخال الإحداثيات يدوياً إذا لزم الأمر)";
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+</script>
+
 <!-- Firebase SDK & Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase.js";
@@ -81,28 +118,6 @@
     const db = getFirestore(app);
 
     const statusDiv = document.getElementById("status");
-
-    // زر جلب الإحداثيات الحالية
-    document.getElementById('getLocationBtn').addEventListener('click', () => {
-        statusDiv.className = "";
-        statusDiv.textContent = "جاري التقاط إحداثيات موقعك الحالي عبر GPS...";
-
-        if (!navigator.geolocation) {
-            statusDiv.className = "error";
-            statusDiv.textContent = "متصفحك لا يدعم تحديد الموقع الجغرافي.";
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition((position) => {
-            document.getElementById("lat").value = position.coords.latitude;
-            document.getElementById("lng").value = position.coords.longitude;
-            statusDiv.className = "success";
-            statusDiv.textContent = "تم بنجاح جلب إحداثيات موقعك الحالي!";
-        }, (error) => {
-            statusDiv.className = "error";
-            statusDiv.textContent = "فشل الحصول على الموقع. تأكد من تفعيل صلاحيات الـ GPS في متصفح الأيباد.";
-        }, { enableHighAccuracy: true });
-    });
 
     // زر حفظ المدرسة
     document.getElementById('saveSchoolBtn').addEventListener('click', async () => {
@@ -142,4 +157,3 @@
 
 </body>
 </html>
- 
