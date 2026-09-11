@@ -3,102 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة الحضور الجغرافي للمدارس الثانوية</title>
+    <title>إدارة وإضافة المدارس - نظام الحضور الجغرافي</title>
     <style>
         body { font-family: Tahoma, sans-serif; background: #eef2f3; margin: 0; padding: 20px; direction: rtl; }
-        .container { max-width: 650px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { color: #007bff; text-align: center; margin-bottom: 5px; }
-        h3 { text-align: center; color: #555; margin-top: 0; font-size: 16px; }
-        .tab { display: flex; justify-content: space-around; margin: 20px 0; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
-        .tab-btn { background: none; border: none; font-size: 16px; cursor: pointer; color: #6c757d; font-weight: bold; padding: 10px 15px; }
-        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
-        .section { display: none; }
-        .section.active { display: block; }
+        h3 { text-align: center; color: #555; margin-top: 0; font-size: 15px; }
         .form-group { margin-bottom: 15px; text-align: right; }
         label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-        select, input { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
-        .btn-action { display: block; width: 100%; padding: 14px; color: white; border: none; border-radius: 6px; font-size: 17px; cursor: pointer; font-weight: bold; margin-top: 15px; text-align: center; }
-        .btn-primary { background: #007bff; }
+        input { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .btn-action { display: block; width: 100%; padding: 14px; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 15px; text-align: center; }
         .btn-success { background: #28a745; }
-        .btn-info { background: #17a2b8; margin-top: 5px; font-size: 14px; padding: 10px; }
-        #status, #adminStatus { margin-top: 15px; padding: 12px; text-align: center; border-radius: 6px; font-weight: bold; font-size: 14px; }
+        .btn-info { background: #17a2b8; margin-bottom: 10px; }
+        .btn-back { background: #6c757d; margin-top: 20px; }
+        #status { margin-top: 15px; padding: 12px; text-align: center; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .external-box { margin-top: 25px; background: #e8f4fd; padding: 15px; border-radius: 8px; border: 1px solid #b8daff; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>نظام إدارة الحضور والتقارير</h2>
-    <h3>لوحة التحكم المركزية - للمدارس الثانوية</h3>
+    <h2>إدارة المدارس</h2>
+    <h3>إضافة مدرسة جديدة وحدودها الجغرافية</h3>
     <hr style="margin: 20px 0; border:0; border-top:1px solid #eee;">
+
+    <div class="form-group">
+        <label>معرف المدرسة (ID إنجليزي بدون مسافات، مثال: school2):</label>
+        <input type="text" id="schoolId" placeholder="school_id">
+    </div>
+
+    <div class="form-group">
+        <label>اسم المدرسة الرسمي:</label>
+        <input type="text" id="schoolName" placeholder="مثال: ثانوية الفراهيدي للبنين">
+    </div>
+
+    <button type="button" class="btn-action btn-info" id="getLocationBtn">📍 جلب إحداثيات موقعي الحالي (GPS)</button>
+
+    <div class="form-group">
+        <label>خط العرض (Lat):</label>
+        <input type="number" id="lat" step="any" placeholder="0.0">
+    </div>
+
+    <div class="form-group">
+        <label>خط الطول (Lng):</label>
+        <input type="number" id="lng" step="any" placeholder="0.0">
+    </div>
+
+    <div class="form-group">
+        <label>نصف القطر المسموح للتسجيل (بالمتر):</label>
+        <input type="number" id="radius" value="100">
+    </div>
+
+    <button type="button" class="btn-action btn-success" id="saveSchoolBtn">💾 حفظ المدرسة في قاعدة البيانات</button>
     
-    <div class="tab">
-        <button type="button" class="tab-btn active" id="tabAttendanceBtn">📍 تسجيل الحضور (GPS)</button>
-        <button type="button" class="tab-btn" id="tabAdminBtn">🏫 إدارة وإضافة المدارس</button>
-    </div>
+    <div id="status"></div>
 
-    <!-- قسم تسجيل الحضور الجغرافي -->
-    <div id="attendance" class="section active">
-        <div class="form-group">
-            <label>اختر المدرسة التابع لها:</label>
-            <select id="schoolSelect">
-                <option value="">جاري تحميل المدارس المتاحة...</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>اسم الموظف أو الثلاثي:</label>
-            <input type="text" id="employeeName" placeholder="أدخل اسمك الكريم هنا">
-        </div>
-        <button type="button" class="btn-action btn-primary" id="recordBtn">تسجيل الحضور الآن عبر GPS</button>
-        <div id="status"></div>
-    </div>
-
-    <!-- قسم إدارة وإضافة المدارس -->
-    <div id="admin" class="section">
-        <h3 style="color: #28a745; text-align: right;">إضافة مدرسة جديدة للنظام</h3>
-        <div class="form-group">
-            <label>معرف المدرسة (ID بالإنجليزية بدون مسافات مثل: highschool1):</label>
-            <input type="text" id="newSchoolId" placeholder="school_id">
-        </div>
-        <div class="form-group">
-            <label>اسم المدرسة الرسمي:</label>
-            <input type="text" id="newSchoolName" placeholder="مثال: ثانوية النجدين للبنين">
-        </div>
-        <div class="form-group">
-            <label>خط العرض (Lat):</label>
-            <input type="number" id="newLat" step="any" placeholder="0.0">
-        </div>
-        <div class="form-group">
-            <label>خط الطول (Lng):</label>
-            <input type="number" id="newLng" step="any" placeholder="0.0">
-        </div>
-        <button type="button" class="btn-action btn-info" id="fetchLocBtn">📍 جلب إحداثيات موقعي الحالي تلقائياً</button>
-        
-        <div class="form-group" style="margin-top: 15px;">
-            <label>نصف القطر المسموح للتسجيل (بالمتر):</label>
-            <input type="number" id="newRadius" value="100">
-        </div>
-        <button type="button" class="btn-action btn-success" id="saveSchoolBtn">حفظ المدرسة في قاعدة البيانات</button>
-        <div id="adminStatus"></div>
-    </div>
-
-    <!-- قسم مشاركة الرابط -->
-    <div class="external-box">
-        <h4 style="margin-top: 0; color: #004085;">🔗 رابط النظام للموظفين</h4>
-        <p style="font-size: 12px; color: #333; margin-bottom: 10px;">انسخ الرابط وشاركه مع الكادر:</p>
-        <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="externalLink" readonly style="width: 65%; direction: ltr; text-align: left; padding: 8px; font-size: 12px;">
-            <button type="button" id="copyBtn" style="background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">نسخ</button>
-        </div>
-    </div>
+    <button type="button" class="btn-action btn-back" onclick="window.location.href='index.html'">⬅ العودة إلى لوحة التحكم الرئيسية</button>
 </div>
 
-<!-- Firebase SDKs & App Logic -->
+<!-- Firebase SDK & Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase.js";
-    import { getFirestore, collection, getDocs, doc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
@@ -113,58 +80,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // ضبط رابط المشاركة
-    document.getElementById('externalLink').value = window.location.href.split('?')[0];
+    const statusDiv = document.getElementById("status");
 
-    document.getElementById('copyBtn').addEventListener('click', () => {
-        let copyText = document.getElementById("externalLink");
-        copyText.select();
-        navigator.clipboard.writeText(copyText.value);
-        alert("تم نسخ الرابط بنجاح!");
-    });
-
-    // تحميل المدارس
-    async function loadSchools() {
-        const select = document.getElementById("schoolSelect");
-        select.innerHTML = '<option value="">جاري تحميل المدارس...</option>';
-        try {
-            const querySnapshot = await getDocs(collection(db, "schools"));
-            select.innerHTML = '<option value="">اختر المدرسة...</option>';
-            querySnapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                const opt = document.createElement("option");
-                opt.value = docSnap.id;
-                opt.setAttribute("data-lat", data.lat || 0);
-                opt.setAttribute("data-lng", data.lng || 0);
-                opt.setAttribute("data-radius", data.radius || 100);
-                opt.textContent = data.name || docSnap.id;
-                select.appendChild(opt);
-            });
-        } catch (e) {
-            console.error("خطأ في جلب المدارس: ", e);
-            select.innerHTML = '<option value="">خطأ في تحميل المدارس</option>';
-        }
-    }
-
-    // التنقل بين التبويبات عبر مستمعي الأحداث المباشرة (Event Listeners) لضمان تفاعل الأيباد
-    document.getElementById('tabAttendanceBtn').addEventListener('click', (e) => {
-        document.getElementById('attendance').classList.add('active');
-        document.getElementById('admin').classList.remove('active');
-        e.target.classList.add('active');
-        document.getElementById('tabAdminBtn').classList.remove('active');
-        loadSchools();
-    });
-
-    document.getElementById('tabAdminBtn').addEventListener('click', (e) => {
-        document.getElementById('admin').classList.add('active');
-        document.getElementById('attendance').classList.remove('active');
-        e.target.classList.add('active');
-        document.getElementById('tabAttendanceBtn').classList.remove('active');
-    });
-
-    // جلب الإحداثيات الجغرافية الحالية
-    document.getElementById('fetchLocBtn').addEventListener('click', () => {
-        const statusDiv = document.getElementById("adminStatus");
+    // زر جلب الإحداثيات الحالية
+    document.getElementById('getLocationBtn').addEventListener('click', () => {
         statusDiv.className = "";
         statusDiv.textContent = "جاري التقاط إحداثيات موقعك الحالي عبر GPS...";
 
@@ -175,8 +94,8 @@
         }
 
         navigator.geolocation.getCurrentPosition((position) => {
-            document.getElementById("newLat").value = position.coords.latitude;
-            document.getElementById("newLng").value = position.coords.longitude;
+            document.getElementById("lat").value = position.coords.latitude;
+            document.getElementById("lng").value = position.coords.longitude;
             statusDiv.className = "success";
             statusDiv.textContent = "تم بنجاح جلب إحداثيات موقعك الحالي!";
         }, (error) => {
@@ -185,114 +104,42 @@
         }, { enableHighAccuracy: true });
     });
 
-    // دالة حساب المسافة
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3;
-        const φ1 = lat1 * Math.PI/180;
-        const φ2 = lat2 * Math.PI/180;
-        const Δφ = (lat2-lat1) * Math.PI/180;
-        const Δλ = (lon2-lon1) * Math.PI/180;
-
-        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                  Math.cos(φ1) * Math.cos(φ2) *
-                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
-
-    // تسجيل الحضور
-    document.getElementById('recordBtn').addEventListener('click', () => {
-        const select = document.getElementById("schoolSelect");
-        const employeeName = document.getElementById("employeeName").value;
-        const statusDiv = document.getElementById("status");
-
-        if (!select.value) {
-            statusDiv.className = "error";
-            statusDiv.textContent = "الرجاء اختيار المدرسة أولاً!";
-            return;
-        }
-        if (!employeeName.trim()) {
-            statusDiv.className = "error";
-            statusDiv.textContent = "الرجاء إدخال اسم الموظف!";
-            return;
-        }
-
-        const selectedOpt = select.options[select.selectedIndex];
-        const schoolLat = parseFloat(selectedOpt.getAttribute("data-lat"));
-        const schoolLng = parseFloat(selectedOpt.getAttribute("data-lng"));
-        const schoolRadius = parseFloat(selectedOpt.getAttribute("data-radius"));
-
-        statusDiv.className = "";
-        statusDiv.textContent = "جاري التحقق من موقعك الجغرافي عبر GPS...";
-
-        if (!navigator.geolocation) {
-            statusDiv.className = "error";
-            statusDiv.textContent = "متصفحك لا يدعم تحديد الموقع الجغرافي.";
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            const distance = calculateDistance(userLat, userLng, schoolLat, schoolLng);
-
-            if (distance <= schoolRadius) {
-                try {
-                    await addDoc(collection(db, "attendance"), {
-                        schoolId: select.value,
-                        employeeName: employeeName,
-                        timestamp: new Date(),
-                        lat: userLat,
-                        lng: userLng
-                    });
-                    statusDiv.className = "success";
-                    statusDiv.textContent = `تم تسجيل الحضور بنجاح! المسافة عن المدرسة: ${Math.round(distance)} متر.`;
-                } catch (e) {
-                    statusDiv.className = "error";
-                    statusDiv.textContent = "حدث خطأ أثناء حفظ البيانات في قاعدة البيانات.";
-                }
-            } else {
-                statusDiv.className = "error";
-                statusDiv.textContent = `عذراً، أنت خارج النطاق المسموح! المسافة الحالية: ${Math.round(distance)} متر (الحد الأقصى: ${schoolRadius}م).`;
-            }
-        }, (error) => {
-            statusDiv.className = "error";
-            statusDiv.textContent = "فشل تحديد الموقع. تأكد من تفعيل خدمة الـ GPS.";
-        }, { enableHighAccuracy: true });
-    });
-
-    // حفظ مدرسة جديدة
+    // زر حفظ المدرسة
     document.getElementById('saveSchoolBtn').addEventListener('click', async () => {
-        const id = document.getElementById("newSchoolId").value.trim();
-        const name = document.getElementById("newSchoolName").value.trim();
-        const lat = parseFloat(document.getElementById("newLat").value);
-        const lng = parseFloat(document.getElementById("newLng").value);
-        const radius = parseFloat(document.getElementById("newRadius").value);
-        const statusDiv = document.getElementById("adminStatus");
+        const id = document.getElementById("schoolId").value.trim();
+        const name = document.getElementById("schoolName").value.trim();
+        const lat = parseFloat(document.getElementById("lat").value);
+        const lng = parseFloat(document.getElementById("lng").value);
+        const radius = parseFloat(document.getElementById("radius").value);
 
         if (!id || !name || isNaN(lat) || isNaN(lng)) {
             statusDiv.className = "error";
-            statusDiv.textContent = "الرجاء تعبئة كافة الحقول بشكل صحيح!";
+            statusDiv.textContent = "الرجاء تعبئة كافة الحقول المطلوبة بشكل صحيح!";
             return;
         }
 
         try {
-            await setDoc(doc(db, "schools", id), { name, lat, lng, radius });
+            await setDoc(doc(db, "schools", id), {
+                name: name,
+                lat: lat,
+                lng: lng,
+                radius: radius
+            });
             statusDiv.className = "success";
-            statusDiv.textContent = "تمت إضافة المدرسة بنجاح وأصبحت جاهزة في القائمة!";
-            document.getElementById("newSchoolId").value = "";
-            document.getElementById("newSchoolName").value = "";
-            document.getElementById("newLat").value = "";
-            document.getElementById("newLng").value = "";
+            statusDiv.textContent = "تم حفظ المدرسة بنجاح في النظام!";
+            
+            // تفريغ الحقول بعد الحفظ الناجح
+            document.getElementById("schoolId").value = "";
+            document.getElementById("schoolName").value = "";
+            document.getElementById("lat").value = "";
+            document.getElementById("lng").value = "";
         } catch (e) {
-            statusDiv.className, statusDiv.className = "error";
-            statusDiv.textContent = "حدث خطأ: " + e.message;
+            statusDiv.className = "error";
+            statusDiv.textContent = "حدث خطأ أثناء الحفظ: " + e.message;
         }
     });
-
-    // تحميل المدارس عند فتح الصفحة لأول مرة
-    loadSchools();
 </script>
 
 </body>
 </html>
+ 
