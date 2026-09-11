@@ -25,7 +25,6 @@
 <body>
 
 <div class="container">
-    <!-- تم تعديل رابط العودة ليعمل ديناميكياً مع كود المدرسة -->
     <a id="backLink" href="#" class="back-link">← العودة لوحة التحكم الرئيسية</a>
     <h2 style="color:#007bff; text-align:center;">📝 التسجيل اليدوي المفصل للحضور</h2>
     
@@ -51,7 +50,7 @@
     </table>
 </div>
 
-<!-- مكتبات Firebase (نسخة Compat لضمان التوافق التام مع باقي النظام لديك) -->
+<!-- مكتبات Firebase (نسخة Compat) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -69,7 +68,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // استخراج كود المدرسة من الرابط أو الذاكرة المحلية
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
 
@@ -82,7 +80,6 @@
         window.location.href = "index.html";
     } else {
         localStorage.setItem("currentSchoolId", schoolId);
-        // ضبط زر العودة ليعمل ديناميكياً مع المدرسة الحالية
         document.getElementById('backLink').href = `dashboard.html?school=${schoolId}`;
     }
 
@@ -107,7 +104,6 @@
 
     window.renderTable = () => {
         const date = document.getElementById('dateSelector').value;
-        // ربط استعلام الحضور بمجموعة المدرسة المحددة
         db.collection("schools").doc(schoolId).collection("attendance")
           .where("date", "==", date)
           .onSnapshot(snap => {
@@ -166,12 +162,14 @@
         
         const empData = empSnap.data();
         let status = statusRaw;
-        if (status === "حاضر") {
+        
+        // إعادة احتساب الحالة تلقائياً بناءً على الوقت إذا كانت الحالة حاضر أو متأخر
+        if (status === "حاضر" || status === "متأخر") {
             status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
         }
 
         if (editingId) {
-            // تحديث السجل الموجود ضمن المدرسة الحالية
+            // تحديث السجل الموجود وضمان تحديث الحالة والوقت بدقة
             await db.collection("schools").doc(schoolId).collection("attendance").doc(editingId).set({
                 empCode: code,
                 name: empData.name,
@@ -183,7 +181,6 @@
             alert("تم تحديث البيانات بنجاح");
             resetForm();
         } else {
-            // التحقق مما إذا كان الموظف مسجلاً مسبقاً في نفس اليوم ضمن هذه المدرسة
             const qSnap = await db.collection("schools").doc(schoolId).collection("attendance")
                                   .where("empCode", "==", code)
                                   .where("date", "==", date)
