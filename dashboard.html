@@ -23,7 +23,6 @@
 <body>
 
 <div class="container">
-    <!-- زر العودة يظهر حصراً للمشرف أو المساعد بناءً على المعاملات القادمة -->
     <div id="backButtonContainer" style="text-align: right; display: none;">
         <a id="backAdminBtn" href="admin.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
     </div>
@@ -70,20 +69,38 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
-    
-    // التحقق الدقيق من صلاحيات المشرف العام أو المساعد
-    const fromParam = urlParams.get('from');
-    const adminParamVal = urlParams.get('admin');
-    const isSuperAdminOrAdmin = (fromParam === 'admin' || adminParamVal === 'true' || fromParam === 'super_admin');
+    let fromParam = urlParams.get('from');
+    let adminParamVal = urlParams.get('admin');
+
+    // تحديد ما إذا كان الدخول إدارياً من الرابط الحالي
+    let isSuperAdminOrAdmin = (fromParam === 'admin' || adminParamVal === 'true' || fromParam === 'super_admin');
 
     if (isSuperAdminOrAdmin) {
+        // حفظ حالة المشرف في الذاكرة المؤقتة لكي لا تضيع عند التنقل بين الأزرار الفرعية
+        localStorage.setItem("isAdminMode", "true");
+        localStorage.setItem("adminFrom", fromParam || (adminParamVal === 'true' ? 'admin' : ''));
+    } else {
+        // التحقق مما إذا كانت الذاكرة تخبرنا أن الدخول سابقاً كان إدارياً أو مدير مدرسة
+        // (إذا دخل المدير برابطه الخاص، سنجبر الذاكرة على إلغاء وضع المشرف)
+        if (schoolId && urlParams.has('school') && !fromParam && !adminParamVal) {
+            // هذا دخول مباشر برابط المدرسة الخارجي
+            localStorage.removeItem("isAdminMode");
+            localStorage.removeItem("adminFrom");
+        }
+    }
+
+    // الفحص النهائي من الذاكرة والرابط معاً
+    const storedAdminMode = localStorage.getItem("isAdminMode") === "true";
+    const storedFrom = localStorage.getItem("adminFrom");
+
+    if (isSuperAdminOrAdmin || storedAdminMode) {
         document.getElementById('backButtonContainer').style.display = 'block';
-        // توجيه زر العودة حسب مصدر الدخول (سواء من صفحة الـ admin أو الـ super_admin)
-        if (fromParam === 'super_admin') {
+        if (fromParam === 'super_admin' || storedFrom === 'super_admin') {
             document.getElementById('backAdminBtn').href = "super_admin.html";
             document.getElementById('backAdminBtn').innerText = "⬅ العودة لوحة المساعد";
         } else {
             document.getElementById('backAdminBtn').href = "admin.html";
+            document.getElementById('backAdminBtn').innerText = "⬅ العودة لقائمة المدارس";
         }
     } else {
         document.getElementById('backButtonContainer').style.display = 'none';
@@ -107,14 +124,16 @@
             }
         });
 
-        // الروابط الفرعية أصبحت تفتح بمعرف المدرسة فقط دون تمرير صلاحيات المشرف لتكون آمنة تماماً لمدير المدرسة
-        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}`;
-        document.getElementById('btnManual').href = `manual.html?school=${schoolId}`;
-        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}`;
-        document.getElementById('btnReports').href = `reports.html?school=${schoolId}`;
-        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}`;
-        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}`;
-        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}`;
+        // تمرير باراميتر المشرف في الروابط الفرعية لكي تحافظ على ظهور زر العودة عند العودة للوحة
+        const subAdminParam = (isSuperAdminOrAdmin || storedAdminMode) ? `&from=${fromParam || storedFrom || 'admin'}` : '';
+        
+        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}${subAdminParam}`;
+        document.getElementById('btnManual').href = `manual.html?school=${schoolId}${subAdminParam}`;
+        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}${subAdminParam}`;
+        document.getElementById('btnReports').href = `reports.html?school=${schoolId}${subAdminParam}`;
+        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}${subAdminParam}`;
+        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}${subAdminParam}`;
+        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}${subAdminParam}`;
     }
 
     let currentBase = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
