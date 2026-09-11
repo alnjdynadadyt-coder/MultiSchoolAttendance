@@ -23,7 +23,7 @@
 <body>
 
 <div class="container">
-    <!-- زر العودة سيظهر فقط إذا كان الزائر هو المشرف العام القادم من لوحة الأدمن -->
+    <!-- زر العودة يظهر فقط للمشرف القادم من لوحة الأدمن -->
     <div id="backButtonContainer" style="text-align: right; display: none;">
         <a href="admin.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
     </div>
@@ -32,7 +32,6 @@
     <h3 id="schoolTitle">جاري تحميل اسم المدرسة...</h3>
     <hr style="margin: 20px 0;">
 
-    <!-- الأزرار مع معرّفات (IDs) لتوجيهها ديناميكياً لكود المدرسة -->
     <a id="btnQuick" href="#" class="btn-nav btn-quick">⚡ التسجيل السريع (بحث وأزرار حضور)</a>
     <a id="btnManual" href="#" class="btn-nav btn-manual">📝 التسجيل اليدوي المفصل</a>
     <a id="btnEmps" href="#" class="btn-nav btn-emps">👥 إدارة الموظفين (إضافة وتعديل)</a>
@@ -41,7 +40,6 @@
     <a id="btnAdvReports" href="#" class="btn-nav" style="background: #17a2b8;">📈 التقارير المتقدمة وفلترة التواريخ</a>
     <a id="btnBackup" href="#" class="btn-nav" style="background: #343a40;">💾 النسخ الاحتياطي والاستيراد</a>
 
-    <!-- قسم رابط التسجيل الخارجي للموظفين خاص بهذه المدرسة -->
     <div class="external-box">
         <h4 style="margin-top: 0; color: #004085;">🔗 رابط تسجيل الحضور الخارجي لموظفي المدرسة</h4>
         <p style="font-size: 12px; color: #333; margin-bottom: 10px;">انسخ الرابط أدناه وأرسله لموظفي هذه المدرسة:</p>
@@ -53,7 +51,6 @@
     </div>
 </div>
 
-<!-- مكتبات Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -73,9 +70,9 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
-    let isAdmin = urlParams.get('admin'); // فحص ما إذا كان القادم هو المشرف
+    let isAdmin = urlParams.get('admin');
 
-    // إذا كان المشرف هو من دخل، أظهر زر العودة
+    // إذا كان الزائر هو المشرف العام، يتم إظهار زر العودة
     if (isAdmin === 'true') {
         document.getElementById('backButtonContainer').style.display = 'block';
     }
@@ -98,7 +95,6 @@
             }
         });
 
-        // تمرير حالة المشرف للأزرار الداخلية أيضاً إذا لزم الأمر
         const adminParam = isAdmin === 'true' ? '&admin=true' : '';
         document.getElementById('btnQuick').href = `quick.html?school=${schoolId}${adminParam}`;
         document.getElementById('btnManual').href = `manual.html?school=${schoolId}${adminParam}`;
