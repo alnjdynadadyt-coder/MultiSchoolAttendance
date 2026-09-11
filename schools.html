@@ -28,10 +28,9 @@
     <h3>إضافة مدرسة جديدة وحدودها الجغرافية</h3>
     <hr style="margin: 20px 0; border:0; border-top:1px solid #eee;">
 
-    <!-- تم حذف حقل الـ ID وحقل نصف القطر بناءً على طلبك -->
     <div class="form-group">
         <label>اسم المدرسة الرسمي:</label>
-        <input type="text" id="schoolName" placeholder="مثال: ثانوية الفراهيدي للبنين">
+        <input type="text" id="schoolName" placeholder="مثال: ثانوية اعدادية متوسطة ">
     </div>
 
     <button type="button" class="btn-action btn-info" onclick="getGPS()">📍 جلب إحداثيات موقعي الحالي (GPS)</button>
@@ -46,19 +45,20 @@
         <input type="number" id="lng" step="any" placeholder="0.0">
     </div>
 
-    <button type="button" class="btn-action btn-success" id="saveSchoolBtn">💾 حفظ المدرسة في قاعدة البيانات</button>
+    <!-- تم تحويل زر الحفظ ليعمل بـ onclick مباشرة لضمان الاستجابة -->
+    <button type="button" class="btn-action btn-success" onclick="saveSchool()">💾 حفظ المدرسة في قاعدة البيانات</button>
     
     <div id="status"></div>
 
     <button type="button" class="btn-action btn-back" onclick="window.location.href='index.html'">⬅ العودة إلى لوحة التحكم الرئيسية</button>
 </div>
 
-<!-- دالة الـ GPS المستقلة (التي تعمل بنجاح معك) -->
+<!-- دالة الـ GPS وحفظ البيانات برمجياً -->
 <script>
     function getGPS() {
         const statusDiv = document.getElementById("status");
         statusDiv.className = "";
-        statusDiv.textContent = "جاري طلب إحداثيات الموقع... يرجى السماح للمتصفح بالوصول للموقع.";
+        statusDiv.textContent = "جاري طلب إحداثيات الموقع... يرجى السماح للمتصفح.";
 
         if (!navigator.geolocation) {
             statusDiv.className = "error";
@@ -75,22 +75,14 @@
             },
             (error) => {
                 statusDiv.className = "error";
-                let msg = "فشل الحصول على الموقع.";
-                if (error.code === error.PERMISSION_DENIED) {
-                    msg = "تم رفض إذن الوصول للموقع. يرجى تفعيله من الإعدادات.";
-                } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    msg = "معلومات الموقع غير متوفرة حالياً.";
-                } else if (error.code === error.TIMEOUT) {
-                    msg = "انتهى الوقت المخصص لطلب الموقع.";
-                }
-                statusDiv.textContent = msg + " (يمكنك إدخال الإحداثيات يدوياً)";
+                statusDiv.textContent = "⚠ فشل الحصول على الموقع. تأكد من إعطاء الصلاحية.";
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
 </script>
 
-<!-- Firebase SDK & Logic (محدثة للحفظ التلقائي وتثبيت المسافة) -->
+<!-- Firebase SDK & Save Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase.js";
     import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -108,26 +100,24 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const statusDiv = document.getElementById("status");
-
-    // زر حفظ المدرسة
-    document.getElementById('saveSchoolBtn').addEventListener('click', async () => {
+    // ربط دالة الحفظ بنافذة المتصفح العامة لتستجيب لـ onclick
+    window.saveSchool = async function() {
+        const statusDiv = document.getElementById("status");
         statusDiv.className = "";
-        statusDiv.textContent = "جاري الحفظ...";
+        statusDiv.textContent = "جاري الحفظ في قاعدة البيانات...";
 
         const name = document.getElementById("schoolName").value.trim();
         const lat = parseFloat(document.getElementById("lat").value);
         const lng = parseFloat(document.getElementById("lng").value);
-        const fixedRadius = 100; // تم تثبيت النطاق على 100 متر لجميع المدارس
+        const fixedRadius = 100; // نطاق ثابت 100 متر
 
         if (!name || isNaN(lat) || isNaN(lng)) {
             statusDiv.className = "error";
-            statusDiv.textContent = "الرجاء كتابة اسم المدرسة والتأكد من جلب الإحداثيات!";
+            statusDiv.textContent = "الرجاء التأكد من كتابة اسم المدرسة وجلب الإحداثيات!";
             return;
         }
 
         try {
-            // استخدام addDoc لتوليد معرف (ID) تلقائي للمدرسة
             await addDoc(collection(db, "schools"), {
                 name: name,
                 lat: lat,
@@ -135,20 +125,20 @@
                 radius: fixedRadius,
                 createdAt: new Date().toISOString()
             });
-            
+
             statusDiv.className = "success";
-            statusDiv.textContent = "🎉 تم حفظ المدرسة بنجاح في قاعدة البيانات!";
+            statusDiv.textContent = "🎉 تم حفظ المدرسة (" + name + ") بنجاح في قاعدة البيانات!";
             
-            // تفريغ الحقول بعد الحفظ الناجح
+            // تفريغ الحقول بعد الحفظ
             document.getElementById("schoolName").value = "";
             document.getElementById("lat").value = "";
             document.getElementById("lng").value = "";
         } catch (e) {
             statusDiv.className = "error";
-            statusDiv.textContent = "حدث خطأ أثناء الحفظ: " + e.message;
-            console.error(e);
+            statusDiv.textContent = "❌ خطأ أثناء الحفظ: " + e.message;
+            console.error("Firebase Error: ", e);
         }
-    });
+    };
 </script>
 
 </body>
