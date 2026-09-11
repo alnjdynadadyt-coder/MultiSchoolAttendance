@@ -12,6 +12,7 @@
         .btn-manual { background: #007bff; }
         .btn-emps { background: #6c757d; }
         .btn-reports { background: #ffc107; color: #333; }
+        .back-btn { background: #6c757d; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; display: inline-block; margin-bottom: 15px; font-size: 14px; }
         
         .external-box { margin-top: 25px; background: #e8f4fd; padding: 15px; border-radius: 8px; border: 1px solid #b8daff; text-align: center; }
         .external-box input { width: 55%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; direction: ltr; text-align: left; font-size: 13px; }
@@ -22,6 +23,11 @@
 <body>
 
 <div class="container">
+    <!-- زر العودة سيظهر فقط إذا كان الزائر هو المشرف العام القادم من لوحة الأدمن -->
+    <div id="backButtonContainer" style="text-align: right; display: none;">
+        <a href="admin.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
+    </div>
+
     <h2 style="color:#007bff; margin-top: 5px;">نظام إدارة الحضور والتقارير</h2>
     <h3 id="schoolTitle">جاري تحميل اسم المدرسة...</h3>
     <hr style="margin: 20px 0;">
@@ -65,9 +71,14 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // استخراج كود المدرسة من رابط الصفحة (URL Parameters) أو من الذاكرة كبديل
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
+    let isAdmin = urlParams.get('admin'); // فحص ما إذا كان القادم هو المشرف
+
+    // إذا كان المشرف هو من دخل، أظهر زر العودة
+    if (isAdmin === 'true') {
+        document.getElementById('backButtonContainer').style.display = 'block';
+    }
 
     if (!schoolId) {
         schoolId = localStorage.getItem("currentSchoolId");
@@ -77,10 +88,8 @@
         alert("لم يتم تحديد المدرسة! سيتم توجيهك للصفحة الرئيسية.");
         window.location.href = "index.html";
     } else {
-        // حفظ الكود في الذاكرة لضمان استمراريته
         localStorage.setItem("currentSchoolId", schoolId);
 
-        // جلب اسم المدرسة الحقيقي من القاعدة لعرضه في العنوان
         db.collection("schools").doc(schoolId).get().then((doc) => {
             if (doc.exists) {
                 document.getElementById("schoolTitle").innerText = doc.data().name + " - لوحة الإدارة";
@@ -89,17 +98,17 @@
             }
         });
 
-        // ربط جميع أزرار لوحة التحكم بـ schoolId تلقائياً
-        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}`;
-        document.getElementById('btnManual').href = `manual.html?school=${schoolId}`;
-        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}`;
-        document.getElementById('btnReports').href = `reports.html?school=${schoolId}`;
-        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}`;
-        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}`;
-        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}`;
+        // تمرير حالة المشرف للأزرار الداخلية أيضاً إذا لزم الأمر
+        const adminParam = isAdmin === 'true' ? '&admin=true' : '';
+        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}${adminParam}`;
+        document.getElementById('btnManual').href = `manual.html?school=${schoolId}${adminParam}`;
+        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}${adminParam}`;
+        document.getElementById('btnReports').href = `reports.html?school=${schoolId}${adminParam}`;
+        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}${adminParam}`;
+        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}${adminParam}`;
+        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}${adminParam}`;
     }
 
-    // إعداد رابط التسجيل الخارجي مع تمرير معرف المدرسة بدقة ضمن الرابط
     let currentBase = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
     let regUrl = currentBase + "employee.html?school=" + schoolId; 
     document.getElementById('externalLink').value = regUrl;
