@@ -27,12 +27,7 @@
     <div class="container">
         <h2 id="formTitle">لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
-        <!-- حقل كود المدرسة مع زر التوليد التلقائي -->
-        <div style="display: flex; gap: 5px; align-items: center;">
-            <input type="text" id="schoolId" placeholder="كود المدرسة (أو اضغط توليد تلقائي)" style="flex-grow: 1; margin: 8px 0;">
-            <button type="button" class="btn-blue" onclick="generateRandomSchoolId()" style="margin: 0; padding: 10px;">⚡ توليد تلقائي</button>
-        </div>
-
+        <input type="text" id="schoolId" placeholder="كود المدرسة (حروف وأرقام مثل: najdeen123)">
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
         
         <div class="row-group">
@@ -74,38 +69,7 @@
         let isEditing = false;
         let oldSchoolId = "";
 
-        // أنماط التوزيع العشوائي للحرف ورقمين
-        const formats = [
-            (l, d1, d2) => `${l}${d1}${d2}`,
-            (l, d1, d2) => `${d1}${l}${d2}`,
-            (l, d1, d2) => `${d1}${d2}${l}`,
-            (l, d1, d2) => `${l}${d2}${d1}`
-        ];
-        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        const digits = "0123456789";
-
-        // دالة توليد كود تلقائي عشوائي فريد بالكامل
-        window.generateRandomSchoolId = async function() {
-            let isUnique = false;
-            let finalCode = "";
-
-            while (!isUnique) {
-                const randomLetter = letters.charAt(Math.floor(Math.random() * letters.length));
-                const randomDigit1 = digits.charAt(Math.floor(Math.random() * digits.length));
-                const randomDigit2 = digits.charAt(Math.floor(Math.random() * digits.length));
-                const randomFormat = formats[Math.floor(Math.random() * formats.length)];
-                
-                finalCode = randomFormat(randomLetter, randomDigit1, randomDigit2);
-
-                const docCheck = await db.collection("schools").doc(finalCode).get();
-                if (!docCheck.exists) {
-                    isUnique = true;
-                }
-            }
-
-            document.getElementById("schoolId").value = finalCode;
-        }
-
+        // دالة جلب الموقع الجغرافي الحالي للمشرف عبر الـ GPS
         window.getMyLocation = function() {
             if (!navigator.geolocation) {
                 alert("المتصفح لا يدعم تحديد الموقع الجغرافي.");
@@ -125,7 +89,6 @@
             );
         }
 
-        // دالة الحفظ والتعديل مع نقل البيانات الفرعية (الموظفين وغيرها) عند تغير الكود
         document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
             const sId = document.getElementById("schoolId").value.trim();
             const sName = document.getElementById("schoolName").value.trim();
@@ -150,26 +113,13 @@
                         const oldDocRef = db.collection("schools").doc(oldSchoolId);
                         const newDocRef = db.collection("schools").doc(sId);
 
-                        const docCheck = await newDocRef.get();
-                        if (docCheck.exists) {
-                            alert("كود المدرسة الجديد موجود مسبقاً، يرجى اختيار كود آخر.");
-                            return;
+                        const docSnap = await oldDocRef.get();
+                        if (docSnap.exists) {
+                            await newDocRef.set(schoolData);
+                            await oldDocRef.delete();
+                        } else {
+                            await newDocRef.set(schoolData);
                         }
-
-                        // 1. إنشاء المستند الجديد بالبيانات الأساسية
-                        await newDocRef.set(schoolData);
-
-                        // 2. نقل البيانات الفرعية (مثل الموظفين داخل المدرسة إن وجدت)
-                        const subCollections = await oldDocRef.listCollections();
-                        for (let subCol of subCollections) {
-                            const subDocs = await subCol.get();
-                            for (let subDoc of subDocs.docs) {
-                                await newDocRef.collection(subCol.id).doc(subDoc.id).set(subDoc.data());
-                            }
-                        }
-
-                        // 3. حذف المستند القديم بعد إتمام النقل بنجاح
-                        await oldDocRef.delete();
                     } else {
                         await db.collection("schools").doc(sId).update({
                             name: sName,
@@ -178,7 +128,7 @@
                         });
                     }
 
-                    alert("تم تعديل بيانات المدرسة وحفظ كافة بياناتها بنجاح!");
+                    alert("تم تعديل بيانات المدرسة بنجاح!");
                     resetForm();
                     loadSchools();
                 } else {
@@ -232,6 +182,7 @@
             });
         }
 
+        // تم التعديل هنا لإرسال علامة المشرف العام مع الرابط
         window.enterSchool = function(schoolId) {
             window.location.href = `dashboard.html?school=${schoolId}&admin=true`;
         }
