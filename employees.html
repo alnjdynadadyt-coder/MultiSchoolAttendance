@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الموظفين</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; padding: 20px; background: #eef2f3; text-align: right; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 14px; box-sizing: border-box; }
+        input[type="text"] { flex: 1; min-width: 150px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #6c757d; color: white; }
+        .btn-del { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .btn-edit { background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="dashboard.html" class="back-link">← العودة لوحة تحكم المدرسة</a>
+    <h2 id="schoolEmpTitle" style="color:#6c757d; text-align:center;">👥 إدارة الموظفين</h2>
+    
+    <div class="input-group">
+        <input type="text" id="newEmpCode" data-old-code="" placeholder="الكود التعريفي / الباركود">
+        <input type="text" id="newEmpName" placeholder="اسم الموظف الكامل">
+        <select id="newEmpType">
+            <option value="مدرس">مدرس</option>
+            <option value="موظف">موظف</option>
+            <option value="إداري">إداري</option>
+            <option value="حارس">حارس</option>
+        </select>
+        <button onclick="addEmployee()" style="background:#28a745; color:white; font-weight:bold; border:none;">حفظ / تعديل الموظف</button>
+    </div>
+
+    <input type="text" id="searchEmpList" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;" placeholder="🔍 ابحث في قائمة الموظفين..." onkeyup="filterEmpList()">
+
+    <table>
+        <thead>
+            <tr><th>الكود</th><th>الاسم</th><th>التصنيف</th><th>إجراءات</th></tr>
+        </thead>
+        <tbody id="employeesTable"><tr><td colspan="4">جاري التحميل...</td></tr></tbody>
+    </table>
+</div>
+
+<!-- مكتبات Firebase (وضع Compat لضمان التوافقية الكاملة) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // جلب كود المدرسة من الذاكرة المؤقتة
+    const schoolId = localStorage.getItem("currentSchoolId");
+
+    if (!schoolId) {
+        alert("لم يتم تحديد المدرسة! سيتم إعادتك للقائمة الرئيسية.");
+        window.location.href = "index.html";
+    }
+
+    // جلب اسم المدرسة لتزيين العنوان
+    db.collection("schools").doc(schoolId).get().then(doc => {
+        if(doc.exists) {
+            document.getElementById('schoolEmpTitle').innerText = "👥 إدارة موظفي: " + doc.data().name;
+        }
+    });
+
+    // مرجع مجموعة الموظفين الخاصة حصرياً بهذه المدرسة
+    const employeesRef = db.collection("schools").doc(schoolId).collection("employees");
+
+    window.addEmployee = async () => {
+        const oldCode = document.getElementById('newEmpCode').getAttribute('data-old-code');
+        const code = document.getElementById('newEmpCode').value.trim();
+        const name = document.getElementById('newEmpName').value.trim();
+        const type = document.getElementById('newEmpType').value;
+        
+        if(code && name) {
+            try {
+                if (oldCode && oldCode !== code) {
+                    await employeesRef.doc(oldCode).delete();
+                }
+                await employeesRef.doc(code).set({ name, type });
+                alert("تم حفظ بيانات الموظف بنجاح!");
+                
+                document.getElementById('newEmpCode').value = '';
+                document.getElementById('newEmpName').value = '';
+                document.getElementById('newEmpCode').setAttribute('data-old-code', '');
+            } catch (error) {
+                alert("حدث خطأ أثناء الحفظ: " + error.message);
+            }
+        } else {
+            alert("يرجى إدخال الكود والاسم بشكل صحيح.");
+        }
+    };
+
+    window.deleteEmp = async (id) => {
+        if(confirm("هل أنت متأكد من حذف هذا الموظف؟")) {
+            try {
+                await employeesRef.doc(id).delete();
+            } catch (error) {
+                alert("خطأ أثناء الحذف: " + error.message);
+            }
+        }
+    };
+
+    let employeesData = [];
+
+    // الاستماع الفوري لتغييرات موظفي هذه المدرسة فقط
+    employeesRef.onSnapshot(snap => {
+        employeesData = [];
+        snap.forEach(d => {
+            employeesData.push({ id: d.id, ...d.data() });
+        });
+        renderEmployees(employeesData);
+    });
+
+    function renderEmployees(list) {
+        let rows = "";
+        if(list.length === 0) {
+            rows = `<tr><td colspan="4" style="color: #777;">لا يوجد موظفون مسجلون لهذه المدرسة بعد.</td></tr>`;
+        } else {
+            list.forEach(data => {
+                rows += `<tr>
+                    <td>${data.id}</td>
+                    <td style="font-weight:bold;">${data.name}</td>
+                    <td>${data.type}</td>
+                    <td>
+                        <button class="btn-edit" onclick="prepareEdit('${data.id}', '${data.name}', '${data.type}')">تعديل</button> 
+                        <button class="btn-del" onclick="deleteEmp('${data.id}')">حذف</button>
+                    </td>
+                </tr>`;
+            });
+        }
+        document.getElementById('employeesTable').innerHTML = rows;
+    }
+
+    window.prepareEdit = (id, name, type) => {
+        document.getElementById('newEmpCode').value = id;
+        document.getElementById('newEmpCode').setAttribute('data-old-code', id);
+        document.getElementById('newEmpName').value = name;
+        document.getElementById('newEmpType').value = type;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.filterEmpList = () => {
+        const queryVal = document.getElementById('searchEmpList').value.toLowerCase();
+        const filtered = employeesData.filter(e => e.name.toLowerCase().includes(queryVal) || e.id.toLowerCase().includes(queryVal));
+        renderEmployees(filtered);
+    };
+</script>
+</body>
+</html>
