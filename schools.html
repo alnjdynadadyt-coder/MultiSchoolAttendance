@@ -30,7 +30,7 @@
 
     <div class="form-group">
         <label>اسم المدرسة الرسمي:</label>
-        <input type="text" id="schoolName" placeholder="مثال: ثانوية اعدادية متوسطة ">
+        <input type="text" id="schoolName" placeholder="مثال: اعدادية النجدين للبنين">
     </div>
 
     <button type="button" class="btn-action btn-info" onclick="getGPS()">📍 جلب إحداثيات موقعي الحالي (GPS)</button>
@@ -45,7 +45,7 @@
         <input type="number" id="lng" step="any" placeholder="0.0">
     </div>
 
-    <!-- تم تحويل زر الحفظ ليعمل بـ onclick مباشرة لضمان الاستجابة -->
+    <!-- زر الحفظ مع استدعاء دالة الفحص والفعل مباشرة -->
     <button type="button" class="btn-action btn-success" onclick="saveSchool()">💾 حفظ المدرسة في قاعدة البيانات</button>
     
     <div id="status"></div>
@@ -53,7 +53,7 @@
     <button type="button" class="btn-action btn-back" onclick="window.location.href='index.html'">⬅ العودة إلى لوحة التحكم الرئيسية</button>
 </div>
 
-<!-- دالة الـ GPS وحفظ البيانات برمجياً -->
+<!-- دالة الـ GPS المستقلة -->
 <script>
     function getGPS() {
         const statusDiv = document.getElementById("status");
@@ -100,7 +100,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // ربط دالة الحفظ بنافذة المتصفح العامة لتستجيب لـ onclick
+    // دالة الحفظ العامة لضمان الارتباط بـ onclick
     window.saveSchool = async function() {
         const statusDiv = document.getElementById("status");
         statusDiv.className = "";
@@ -109,11 +109,16 @@
         const name = document.getElementById("schoolName").value.trim();
         const lat = parseFloat(document.getElementById("lat").value);
         const lng = parseFloat(document.getElementById("lng").value);
-        const fixedRadius = 100; // نطاق ثابت 100 متر
+        const fixedRadius = 100; // مسافة ثابتة 100 متر
 
-        if (!name || isNaN(lat) || isNaN(lng)) {
+        if (!name) {
             statusDiv.className = "error";
-            statusDiv.textContent = "الرجاء التأكد من كتابة اسم المدرسة وجلب الإحداثيات!";
+            statusDiv.textContent = "الرجاء إدخال اسم المدرسة الرسمي!";
+            return;
+        }
+        if (isNaN(lat) || isNaN(lng)) {
+            statusDiv.className = "error";
+            statusDiv.textContent = "الرجاء جلب أو إدخال إحداثيات خط العرض والطول بشكل صحيح!";
             return;
         }
 
