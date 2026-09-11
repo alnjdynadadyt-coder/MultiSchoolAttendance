@@ -64,6 +64,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
+    const isAdmin = urlParams.get('admin') === 'true';
 
     if (!schoolId) {
         schoolId = localStorage.getItem("currentSchoolId");
@@ -74,7 +75,13 @@
         window.location.href = "index.html";
     } else {
         localStorage.setItem("currentSchoolId", schoolId);
-        document.getElementById('backLink').href = `dashboard.html?school=${schoolId}`;
+        
+        // إعداد رابط العودة ديناميكياً مع دعم صلاحية المشرف العام
+        let backUrl = `dashboard.html?school=${schoolId}`;
+        if (isAdmin) {
+            backUrl += `&admin=true`;
+        }
+        document.getElementById('backLink').href = backUrl;
     }
 
     const nowObj = new Date();
