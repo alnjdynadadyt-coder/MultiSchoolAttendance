@@ -182,8 +182,9 @@
             });
         }
 
+        // تم التعديل هنا لإرسال علامة المشرف العام مع الرابط
         window.enterSchool = function(schoolId) {
-            window.location.href = `dashboard.html?school=${schoolId}`;
+            window.location.href = `dashboard.html?school=${schoolId}&admin=true`;
         }
 
         window.copySchoolLink = function(schoolId) {
