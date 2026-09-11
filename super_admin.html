@@ -40,8 +40,8 @@
 <body>
 
 <div class="container">
-    <!-- زر الانتقال للوحة المتابعة -->
-    <button class="btn btn-nav" onclick="location.href='admin.html'">📌 الانتقال إلى لوحة متابعة نشاط المدارس</button>
+    <!-- زر الانتقال مخفي افتراضياً ولا يظهر إلا إذا تم القدوم من لوحة الأدمن -->
+    <button id="navBackBtn" class="btn btn-nav" onclick="location.href='admin.html'" style="display: none;">📌 الانتقال إلى لوحة متابعة نشاط المدارس</button>
 
     <h2>🤝 لوحة المساعد - إدارة المدارس</h2>
     
@@ -113,6 +113,12 @@
     let oldSchoolId = "";
 
     window.addEventListener("DOMContentLoaded", () => {
+        // التحقق من معامل الأمان في الرابط لإظهار زر العودة للأدمن فقط
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('from') === 'admin') {
+            document.getElementById("navBackBtn").style.display = "block";
+        }
+
         document.getElementById("schoolId").value = generateRandomSchoolId();
         loadSchoolsAndActivity();
     });
