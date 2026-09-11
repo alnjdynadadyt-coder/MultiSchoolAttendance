@@ -29,16 +29,21 @@
         <!-- زر الانتقال السريع إلى لوحة متابعة نشاط المدارس -->
         <div style="margin-bottom: 20px;">
             <a href="super_admin.html?admin=super" style="display: block; text-align: center; background: #6f42c1; color: white; padding: 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 15px;">
-                👑 الانتقال إلى لوحة متابعة نشاط المدارس (دخول المدير والموظفين)
+                👑 الانتقال إلى لوحة متابعة نشاط المدارس
             </a>
         </div>
 
         <h2 id="formTitle">لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
-        <!-- حقل كود المدرسة (يتم توليده تلقائياً ويقفل عند التعديل) -->
         <input type="text" id="schoolId" placeholder="كود المدرسة (يُولّد تلقائياً)" readonly>
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
         
+        <!-- حقول كلمة المرور -->
+        <div class="row-group">
+            <input type="password" id="schoolPassword" placeholder="كلمة مرور دخول المدير">
+            <input type="password" id="schoolPasswordConfirm" placeholder="تأكيد كلمة المرور">
+        </div>
+
         <div class="row-group">
             <input type="number" step="any" id="schoolLat" placeholder="خط العرض (Latitude)">
             <input type="number" step="any" id="schoolLon" placeholder="خط الطول (Longitude)">
@@ -57,7 +62,7 @@
         <a href="index.html" style="color: #007bff; text-decoration: none; font-weight: bold;">← الانتقال إلى بوابة دخول المدارس (index.html)</a>
     </div>
 
-    <!-- مكتبات Firebase (نسخة Compat) -->
+    <!-- مكتبات Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -78,22 +83,19 @@
         let isEditing = false;
         let oldSchoolId = "";
 
-        // دالة توليد كود عشوائي فريد يتكون من حرف ورقمين (مثلاً: a7b, Z9x)
         function generateRandomSchoolId() {
             const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
             const randomChar = chars.charAt(Math.floor(Math.random() * chars.length));
-            const randomDigits = Math.floor(10 + Math.random() * 90); // رقمين عشوائيين من 10 إلى 99
+            const randomDigits = Math.floor(10 + Math.random() * 90);
             return `${randomChar}${randomDigits}`;
         }
 
-        // توليد الكود تلقائياً عند فتح الصفحة لأول مرة
         window.addEventListener("DOMContentLoaded", () => {
             if (!isEditing) {
                 document.getElementById("schoolId").value = generateRandomSchoolId();
             }
         });
 
-        // دالة جلب الموقع الجغرافي الحالي للمشرف عبر الـ GPS
         window.getMyLocation = function() {
             if (!navigator.geolocation) {
                 alert("المتصفح لا يدعم تحديد الموقع الجغرافي.");
@@ -113,10 +115,11 @@
             );
         }
 
-        // دالة الحفظ والتعديل الآمنة
         document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
             const sId = document.getElementById("schoolId").value.trim();
             const sName = document.getElementById("schoolName").value.trim();
+            const sPass = document.getElementById("schoolPassword").value.trim();
+            const sPassConfirm = document.getElementById("schoolPasswordConfirm").value.trim();
             const sLat = parseFloat(document.getElementById("schoolLat").value);
             const sLon = parseFloat(document.getElementById("schoolLon").value);
 
@@ -125,6 +128,12 @@
                 return;
             }
 
+            if (sPass && sPass !== sPassConfirm) {
+                alert("كلمتا المرور غير متطابقتين!");
+                return;
+            }
+
+            // تجهيز البيانات للحفظ
             const schoolData = {
                 name: sName,
                 lat: isNaN(sLat) ? 0 : sLat,
@@ -132,15 +141,24 @@
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
+            // إضافة كلمة المرور فقط إذا تم إدخالها
+            if (sPass) {
+                schoolData.password = sPass;
+            }
+
             try {
                 if (isEditing) {
-                    await db.collection("schools").doc(sId).update({
+                    let updateData = {
                         name: sName,
                         lat: schoolData.lat,
                         lon: schoolData.lon
-                    });
+                    };
+                    if (sPass) {
+                        updateData.password = sPass;
+                    }
 
-                    alert("تم تحديث بيانات المدرسة بنجاح دون المساس بالبيانات المرتبطة!");
+                    await db.collection("schools").doc(sId).update(updateData);
+                    alert("تم تحديث بيانات المدرسة بنجاح!");
                     resetForm();
                     loadSchools();
                 } else {
@@ -153,13 +171,18 @@
                         return;
                     }
 
+                    if (!sPass) {
+                        alert("الرجاء تعيين كلمة مرور لمدير المدرسة!");
+                        return;
+                    }
+
                     await schoolRef.set(schoolData);
-                    alert("تم إضافة المدرسة وإحداثياتها بنجاح!");
+                    alert("تم إضافة المدرسة وكلمة المرور بنجاح!");
                     resetForm();
                     loadSchools();
                 }
             } catch (error) {
-                alert("حدث خطأ: " + error.message);
+                alert("خطأ: " + error.message);
             }
         });
 
@@ -176,18 +199,20 @@
                     const data = doc.data();
                     const sId = doc.id;
                     const coordsText = (data.lat && data.lon) ? `(${data.lat.toFixed(4)}, ${data.lon.toFixed(4)})` : "(بدون إحداثيات)";
+                    const passText = data.password ? `🔑 كلمة المرور: <b>${data.password}</b>` : `<span style="color:red;">⚠️ بدون كلمة مرور</span>`;
                     
                     const card = document.createElement("div");
                     card.className = "school-card";
                     card.innerHTML = `
                         <div class="school-info">
                             <b>${data.name}</b> <span style="color:#666; font-size:12px;">(${sId})</span><br>
-                            <span style="color: #007bff; font-size: 11px;">📍 ${coordsText}</span>
+                            <span style="color: #007bff; font-size: 11px;">📍 ${coordsText}</span> | 
+                            <span style="font-size: 11px; background: #fff; padding: 2px 5px; border-radius: 3px;">${passText}</span>
                         </div>
                         <div class="school-actions">
                             <button class="btn-green" onclick="enterSchool('${sId}')">دخول</button>
                             <button class="btn-blue" onclick="copySchoolLink('${sId}')">نسخ الرابط</button>
-                            <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name}', '${data.lat || ""}', '${data.lon || ""}')">تعديل</button>
+                            <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name}', '${data.lat || ""}', '${data.lon || ""}', '${data.password || ""}')">تعديل</button>
                             <button class="btn-red" onclick="deleteSchool('${sId}')">حذف</button>
                         </div>
                     `;
@@ -211,7 +236,7 @@
             });
         }
 
-        window.editSchool = function(sId, sName, sLat, sLon) {
+        window.editSchool = function(sId, sName, sLat, sLon, sPass) {
             oldSchoolId = sId;
             const schoolIdInput = document.getElementById("schoolId");
             schoolIdInput.value = sId;
@@ -220,6 +245,8 @@
             document.getElementById("schoolName").value = sName;
             document.getElementById("schoolLat").value = sLat;
             document.getElementById("schoolLon").value = sLon;
+            document.getElementById("schoolPassword").value = sPass;
+            document.getElementById("schoolPasswordConfirm").value = sPass;
             
             document.getElementById("formTitle").innerText = "تعديل بيانات المدرسة: " + sId;
             document.getElementById("saveSchoolBtn").innerText = "حفظ التعديلات";
@@ -238,6 +265,8 @@
             document.getElementById("schoolName").value = "";
             document.getElementById("schoolLat").value = "";
             document.getElementById("schoolLon").value = "";
+            document.getElementById("schoolPassword").value = "";
+            document.getElementById("schoolPasswordConfirm").value = "";
             document.getElementById("formTitle").innerText = "لوحة المشرف العام: إضافة مدرسة جديدة";
             document.getElementById("saveSchoolBtn").innerText = "إضافة المدرسة للقاعدة";
             document.getElementById("cancelEditBtn").style.display = "none";
