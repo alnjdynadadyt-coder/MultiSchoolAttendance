@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title id="pageTitle">التسجيل السريع - إدارة الحضور</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .search-box { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+        
+        /* ترويسة التاريخ المحدثة */
+        .date-container { background: #e2f0d9; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; border: 1px solid #b7e1cd; display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .date-container span { font-weight: bold; color: #385723; font-size: 16px; }
+        .date-input-custom { padding: 5px 10px; font-size: 15px; border: 1px solid #385723; border-radius: 5px; background: white; color: #385723; font-weight: bold; cursor: pointer; }
+
+        /* تنسيق أزرار التصنيفات */
+        .filter-buttons { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn-filter { background: #6c757d; color: white; padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
+        .btn-filter.active { background: #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background-color: #28a745; color: white; }
+        
+        /* تنسيق الأزرار */
+        .btn-quick { background: #28a745; color: white; padding: 8px 12px; border-radius: 5px; border: none; cursor: pointer; margin: 2px; font-weight: bold; }
+        .btn-exit { background: #6f42c1; color: white; padding: 8px 12px; border-radius: 5px; border: none; cursor: pointer; margin: 2px; font-weight: bold; }
+        .btn-excused { background: #17a2b8; color: white; padding: 8px 12px; border-radius: 5px; border: none; cursor: pointer; margin: 2px; font-weight: bold; }
+        .btn-absent { background: #dc3545; color: white; padding: 8px 12px; border-radius: 5px; border: none; cursor: pointer; margin: 2px; font-weight: bold; }
+        .btn-view-img { background: #ffc107; color: #333; padding: 5px 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; margin-top: 5px; display: inline-block; text-decoration: none; }
+
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
+
+        /* نافذة اختيار طريقة إدخال الإجازة */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .modal-content h3 { margin-top: 0; color: #333; }
+        .modal-btn { display: block; width: 100%; padding: 10px; margin: 10px 0; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px; color: white; }
+
+        /* نافذة عرض الصورة المكبرة */
+        .img-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
+        .img-modal-content { max-width: 90%; max-height: 90%; text-align: center; }
+        .img-modal-content img { max-width: 100%; max-height: 80vh; border-radius: 8px; border: 3px solid white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم الرئيسية</a>
+    
+    <h2 id="mainHeading" style="color:#28a745; text-align:center;">⚡ لوحة التسجيل السريع للأسماء</h2>
+    
+    <!-- حقل اختيار التاريخ واليوم -->
+    <div class="date-container">
+        <span id="selectedDayName">📅 اليوم: --</span>
+        <div>
+            <label for="datePicker" style="font-weight: bold; color: #385723; margin-left: 5px;">اختر التاريخ:</label>
+            <input type="date" id="datePicker" class="date-input-custom" onchange="onDateChanged()">
+        </div>
+    </div>
+
+    <div class="filter-buttons">
+        <button class="btn-filter active" onclick="filterByCategory('الكل', this)">الكل</button>
+        <button class="btn-filter" onclick="filterByCategory('مدرس', this)">مدرس</button>
+        <button class="btn-filter" onclick="filterByCategory('إداري', this)">إداري</button>
+        <button class="btn-filter" onclick="filterByCategory('موظف', this)">موظف</button>
+        <button class="btn-filter" onclick="filterByCategory('حارس', this)">حارس</button>
+    </div>
+
+    <input type="text" id="searchEmp" class="search-box" placeholder="🔍 ابحث عن اسم الموظف لتسجيله بسرعة..." onkeyup="filterTable()">
+
+    <table id="quickTable">
+        <thead>
+            <tr><th>الاسم</th><th>التصنيف</th><th>إجراءات الحضور والانصراف</th></tr>
+        </thead>
+        <tbody id="quickAttendanceTable"></tbody>
+    </table>
+</div>
+
+<!-- نافذة اختيار طريقة إدخال الإجازة -->
+<div id="leaveModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>خيارات تسجيل الإجازة</h3>
+        <p id="modalEmpName" style="font-weight: bold; color: #17a2b8;"></p>
+        <button class="modal-btn" style="background: #28a745;" onclick="processLeaveChoice('storage')">1. رفع صورة حقيقية (سحابي + ضغط تلقائي)</button>
+        <button class="modal-btn" style="background: #ffc107; color: #333;" onclick="processLeaveChoice('base64')">2. ضغط وتحويل الصورة مباشرة</button>
+        <button class="modal-btn" style="background: #6c757d;" onclick="processLeaveChoice('none')">3. بدون رفع صورة (كتابة السبب فقط)</button>
+        <button class="modal-btn" style="background: #dc3545;" onclick="closeLeaveModal()">إلغاء</button>
+    </div>
+</div>
+
+<!-- نافذة عرض الصورة المكبرة -->
+<div id="imageViewerModal" class="img-modal-overlay" onclick="closeImageViewer()">
+    <div class="img-modal-content">
+        <img id="enlargedLeaveImg" src="" alt="صورة الإجازة">
+        <p style="color: white; margin-top: 10px; font-weight: bold;">اضغط في أي مكان لإغلاق الصورة</p>
+    </div>
+</div>
+
+<input type="file" id="leaveImageInput" accept="image/*" style="display: none;" onchange="handleImageSelected(this)">
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // التقاط كود المدرسة من الرابط
+    const urlParams = new URLSearchParams(window.location.search);
+    const schoolId = urlParams.get("school");
+
+    const backBtn = document.getElementById('backDashboardBtn');
+    if (schoolId) {
+        backBtn.href = `dashboard.html?school=${schoolId}`;
+    } else {
+        backBtn.style.display = 'none';
+    }
+
+    // جلب اسم المدرسة وتحديث الترويسة
+    if (schoolId) {
+        import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js").then(async ({ getDoc, doc }) => {
+            const schoolDoc = await getDoc(doc(db, "schools", schoolId));
+            if (schoolDoc.exists()) {
+                const schoolName = schoolDoc.data().name;
+                document.getElementById('pageTitle').innerText = `التسجيل السريع - ${schoolName}`;
+                document.getElementById('mainHeading').innerText = `⚡ لوحة التسجيل السريع - ${schoolName}`;
+            }
+        });
+    }
+
+    // ضبط التاريخ الحالي كافتراضي عند فتح الصفحة
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' });
+    document.getElementById('datePicker').value = todayStr;
+
+    let selectedDateStr = todayStr;
+    let selectedDayNameStr = "";
+
+    function updateDateDisplay(dateString) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
+        selectedDayNameStr = d.toLocaleDateString('ar-EG', { weekday: 'long' });
+        document.getElementById('selectedDayName').innerText = `📅 اليوم: ${selectedDayNameStr}`;
+    }
+
+    window.onDateChanged = () => {
+        const picker = document.getElementById('datePicker');
+        if (!picker.value) return;
+        selectedDateStr = picker.value;
+        updateDateDisplay(selectedDateStr);
+        loadEmployees();
+    };
+
+    updateDateDisplay(todayStr);
+
+    const getLimit = (type, timeInput) => {
+        const [h, m] = timeInput.split(':').map(Number);
+        const timeVal = h * 60 + m;
+        if (type === "حارس") return (timeVal < 12 * 60) ? "07:10" : "17:10";
+        if (type === "موظف") return (timeVal < 11 * 60) ? "07:10" : "12:10";
+        if (type === "إداري") return "07:40";
+        if (type === "مدرس") return "08:10";
+        return "08:10";
+    };
+
+    let activeEmpForLeave = null;
+    let selectedLeaveMethod = null;
+    let attendanceMap = {};
+
+    // مراجع المجموعات الفرعية للمدرسة الحالية
+    const getEmployeesRef = () => collection(db, "schools", schoolId, "employees");
+    const getAttendanceRef = () => collection(db, "schools", schoolId, "attendance");
+
+    window.quickAction = async (code, name, type, action) => {
+        if (!schoolId) { alert("خطأ: لم يتم تحديد المدرسة!"); return; }
+        const timeInput = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Asia/Baghdad'});
+        
+        let q;
+        if (action === 'exit' && type === "حارس") {
+            q = query(getAttendanceRef(), where("empCode", "==", code), where("exitTime", "==", ""));
+        } else {
+            q = query(getAttendanceRef(), where("empCode", "==", code), where("date", "==", selectedDateStr));
+        }
+        
+        const snap = await getDocs(q);
+
+        if (action === 'attendance') {
+            if (!snap.empty) { alert("الموظف مسجل بالفعل لهذا التاريخ!"); return; }
+            let status = (timeInput > getLimit(type, timeInput)) ? "متأخر" : "حاضر";
+            await addDoc(getAttendanceRef(), { empCode: code, name, status, time: timeInput, exitTime: "", date: selectedDateStr, day: selectedDayNameStr, reason: "", leaveImage: "" });
+            alert(`تم تسجيل حضور (${name}) لتاريخ ${selectedDateStr}`);
+            loadEmployees();
+        } else if (action === 'exit') {
+            if (snap.empty) { alert("لم يتم تسجيل الحضور لهذا التاريخ بعد!"); return; }
+            
+            if (["مدرس", "إداري", "موظف"].includes(type) && selectedDateStr === todayStr) {
+                const [h, m] = timeInput.split(':').map(Number);
+                const timeVal = h * 60 + m;
+                if (timeVal < 11 * 60) {
+                    alert("عذراً، لا يمكن تسجيل الانصراف قبل الساعة 11:00 صباحاً لهذه الفئة!");
+                    return;
+                }
+            }
+
+            await setDoc(doc(db, 'schools', schoolId, 'attendance', snap.docs[0].id), { exitTime: timeInput }, { merge: true });
+            alert(`تم تسجيل انصراف (${name})`);
+            loadEmployees();
+        } else if (action === 'excused') {
+            if (!snap.empty) { alert("الموظف مسجل بالفعل لهذا التاريخ!"); return; }
+            activeEmpForLeave = { id: code, name: name, type: type };
+            document.getElementById('modalEmpName').innerText = `الموظف: ${name} (${selectedDateStr})`;
+            document.getElementById('leaveModal').style.display = 'flex';
+        } else if (action === 'absent') {
+            if (!snap.empty) { alert("الموظف مسجل بالفعل لهذا التاريخ!"); return; }
+            await addDoc(getAttendanceRef(), { empCode: code, name, status: "غائب", time: "-", exitTime: "-", date: selectedDateStr, day: selectedDayNameStr, reason: "غائب", leaveImage: "" });
+            alert(`تم تسجيل غياب (${name}) لتاريخ ${selectedDateStr}`);
+            loadEmployees();
+        }
+    };
+
+    window.closeLeaveModal = () => {
+        document.getElementById('leaveModal').style.display = 'none';
+        activeEmpForLeave = null;
+    };
+
+    window.processLeaveChoice = (method) => {
+        selectedLeaveMethod = method;
+        document.getElementById('leaveModal').style.display = 'none';
+
+        if (method === 'none') {
+            saveLeaveData('');
+        } else {
+            document.getElementById('leaveImageInput').click();
+        }
+    };
+
+    function compressImage(file, maxWidth = 800, quality = 0.7) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error('فشل ضغط الصورة'));
+                            return;
+                        }
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    }
+
+    window.handleImageSelected = async (inputElement) => {
+        if (!inputElement.files || inputElement.files.length === 0) return;
+        let file = inputElement.files[0];
+        let imageUrl = '';
+
+        alert("جاري ضغط ومعالجة الصورة تلقائياً، لطفا الانتظار...");
+
+        try {
+            const compressedFile = await compressImage(file, 800, 0.7);
+
+            if (selectedLeaveMethod === 'storage') {
+                let storageRef = ref(storage, `schools/${schoolId}/leaves/${selectedDateStr}_${activeEmpForLeave.id}_${file.name}`);
+                let snapshot = await uploadBytes(storageRef, compressedFile);
+                imageUrl = await getDownloadURL(snapshot.ref);
+            } else if (selectedLeaveMethod === 'base64') {
+                imageUrl = await new Promise((resolve) => {
+                    let reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(compressedFile);
+                });
+            }
+
+            await saveLeaveData(imageUrl);
+        } catch (error) {
+            console.error(error);
+            alert("حدث خطأ أثناء معالجة الصورة، يجدر المحاولة مجدداً.");
+        }
+        inputElement.value = '';
+    };
+
+    async function saveLeaveData(imageUrl) {
+        if (!activeEmpForLeave) return;
+        let reasonText = prompt("أدخل سبب الإجازة أو ملاحظات إضافية (اختياري):") || "إجازة رسمية";
+
+        try {
+            await addDoc(getAttendanceRef(), {
+                empCode: activeEmpForLeave.id,
+                name: activeEmpForLeave.name,
+                status: "مجاز",
+                time: "-",
+                exitTime: "-",
+                date: selectedDateStr,
+                day: selectedDayNameStr,
+                reason: reasonText,
+                leaveImage: imageUrl
+            });
+
+            alert(`تم تسجيل إجازة الموظف (${activeEmpForLeave.name}) لتاريخ ${selectedDateStr} بنجاح!`);
+            loadEmployees();
+        } catch (error) {
+            alert("خطأ في حفظ بيانات الإجازة في قاعدة البيانات.");
+        }
+    }
+
+    window.viewLeaveImage = (imgUrl) => {
+        document.getElementById('enlargedLeaveImg').src = imgUrl;
+        document.getElementById('imageViewerModal').style.display = 'flex';
+    };
+
+    window.closeImageViewer = () => {
+        document.getElementById('imageViewerModal').style.display = 'none';
+    };
+
+    let allEmployees = [];
+    let currentCategory = 'الكل';
+
+    async function loadEmployees() {
+        if (!schoolId) return;
+        // جلب سجلات الحضور والإجازات للتاريخ المحدد لهذه المدرسة حصراً
+        const attSnap = await getDocs(query(getAttendanceRef(), where("date", "==", selectedDateStr)));
+        attendanceMap = {};
+        attSnap.forEach(d => {
+            let data = d.data();
+            attendanceMap[data.empCode] = data;
+        });
+
+        const snap = await getDocs(getEmployeesRef());
+        allEmployees = [];
+        snap.forEach(d => {
+            allEmployees.push({ id: d.id, ...d.data() });
+        });
+        filterTable();
+    }
+
+    window.filterByCategory = (category, btnElement) => {
+        currentCategory = category;
+        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+        btnElement.classList.add('active');
+        filterTable();
+    };
+
+    window.filterTable = () => {
+        const searchVal = document.getElementById('searchEmp').value.toLowerCase();
+        
+        const filtered = allEmployees.filter(e => {
+            const matchesCategory = (currentCategory === 'الكل' || e.type === currentCategory);
+            const matchesSearch = e.name.toLowerCase().includes(searchVal);
+            return matchesCategory && matchesSearch;
+        });
+
+        renderList(filtered);
+    };
+
+    function renderList(list) {
+        let qRows = "";
+        list.forEach(data => {
+            let attRecord = attendanceMap[data.id];
+            let imageButtonHtml = "";
+
+            if (attRecord && attRecord.status === 'مجاز' && attRecord.leaveImage && attRecord.leaveImage.trim() !== "") {
+                imageButtonHtml = `<br><button class="btn-view-img" onclick="viewLeaveImage('${attRecord.leaveImage}')">📄 عرض صورة الإجازة</button>`;
+            }
+
+            qRows += `<tr>
+                <td style="font-weight:bold; font-size:16px;">${data.name} ${imageButtonHtml}</td>
+                <td>${data.type}</td>
+                <td>
+                    <button class="btn-quick" onclick="quickAction('${data.id}', '${data.name}', '${data.type}', 'attendance')">حضور</button>
+                    <button class="btn-exit" onclick="quickAction('${data.id}', '${data.name}', '${data.type}', 'exit')">انصراف</button>
+                    <button class="btn-excused" onclick="quickAction('${data.id}', '${data.name}', '${data.type}', 'excused')">مجاز</button>
+                    <button class="btn-absent" onclick="quickAction('${data.id}', '${data.name}', '${data.type}', 'absent')">غائب</button>
+                </td>
+            </tr>`;
+        });
+        document.getElementById('quickAttendanceTable').innerHTML = qRows || `<tr><td colspan="3" style="color: #6c757d;">لا توجد نتائج مطابقة</td></tr>`;
+    }
+
+    if (schoolId) {
+        loadEmployees();
+    } else {
+        document.getElementById('quickAttendanceTable').innerHTML = `<tr><td colspan="3" style="color: #dc3545; font-weight:bold;">رابط غير صالح! لم يتم تحديد المدرسة.</td></tr>`;
+    }
+</script>
+</body>
+</html>
