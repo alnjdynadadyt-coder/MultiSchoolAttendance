@@ -62,12 +62,12 @@
     <button type="button" class="btn-action btn-back" onclick="window.location.href='index.html'">⬅ العودة إلى لوحة التحكم الرئيسية</button>
 </div>
 
-<!-- دوال الجافاسكريبت المستقلة لضمان الاستجابة -->
+<!-- دالة الـ GPS المستقلة -->
 <script>
     function getGPS() {
         const statusDiv = document.getElementById("status");
         statusDiv.className = "";
-        statusDiv.textContent = "جاري طلب إحداثيات الموقع... يرجى السماح للمتصفح بالوصول للموقع.";
+        statusDiv.textContent = "جاري طلب إحداثيات الموقع... يرجى الانتظار.";
 
         if (!navigator.geolocation) {
             statusDiv.className = "error";
@@ -84,22 +84,14 @@
             },
             (error) => {
                 statusDiv.className = "error";
-                let msg = "فشل الحصول على الموقع.";
-                if (error.code === error.PERMISSION_DENIED) {
-                    msg = "تم رفض إذن الوصول للموقع. يرجى تفعيله من إعدادات المتصفح/الجهاز.";
-                } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    msg = "معلومات الموقع غير متوفرة حالياً.";
-                } else if (error.code === error.TIMEOUT) {
-                    msg = "ان انتهى الوقت المخصص لطلب الموقع.";
-                }
-                statusDiv.textContent = msg + " (يمكنك إدخال الإحداثيات يدوياً إذا لزم الأمر)";
+                statusDiv.textContent = "فشل الـ GPS (يمكنك كتابة الإحداثيات يدوياً بالحقول أسفله).";
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
         );
     }
 </script>
 
-<!-- Firebase SDK & Logic -->
+<!-- Firebase SDK & Save Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase.js";
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -119,17 +111,30 @@
 
     const statusDiv = document.getElementById("status");
 
-    // زر حفظ المدرسة
+    // زر حفظ المدرسة مع معالجة الأخطاء الدقيقة
     document.getElementById('saveSchoolBtn').addEventListener('click', async () => {
+        statusDiv.className = "";
+        statusDiv.textContent = "جاري الحفظ في قاعدة البيانات...";
+
         const id = document.getElementById("schoolId").value.trim();
         const name = document.getElementById("schoolName").value.trim();
         const lat = parseFloat(document.getElementById("lat").value);
         const lng = parseFloat(document.getElementById("lng").value);
         const radius = parseFloat(document.getElementById("radius").value);
 
-        if (!id || !name || isNaN(lat) || isNaN(lng)) {
+        if (!id) {
             statusDiv.className = "error";
-            statusDiv.textContent = "الرجاء تعبئة كافة الحقول المطلوبة بشكل صحيح!";
+            statusDiv.textContent = "الرجاء إدخال معرف المدرسة (School ID).";
+            return;
+        }
+        if (!name) {
+            statusDiv.className = "error";
+            statusDiv.textContent = "الرجاء إدخال اسم المدرسة الرسمي.";
+            return;
+        }
+        if (isNaN(lat) || isNaN(lng)) {
+            statusDiv.className = "error";
+            statusDiv.textContent = "إحداثيات الخطأ (خط العرض وخط الطول مطلوبة وأرقام صحيحة).";
             return;
         }
 
@@ -139,18 +144,20 @@
                 lat: lat,
                 lng: lng,
                 radius: radius
-            });
+            }, { merge: true });
+
             statusDiv.className = "success";
-            statusDiv.textContent = "تم حفظ المدرسة بنجاح في النظام!";
+            statusDiv.textContent = "🎉 تم حفظ المدرسة (" + name + ") بنجاح في قاعدة البيانات!";
             
-            // تفريغ الحقول بعد الحفظ الناجح
+            // تفريغ الحقول بعد الحفظ
             document.getElementById("schoolId").value = "";
             document.getElementById("schoolName").value = "";
             document.getElementById("lat").value = "";
             document.getElementById("lng").value = "";
         } catch (e) {
             statusDiv.className = "error";
-            statusDiv.textContent = "حدث خطأ أثناء الحفظ: " + e.message;
+            statusDiv.textContent = "❌ خطأ في الحفظ: " + e.message;
+            console.error("Firebase Error: ", e);
         }
     });
 </script>
