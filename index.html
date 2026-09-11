@@ -23,10 +23,11 @@
     <div id="errorMsg"></div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+<!-- مكتبات Firebase (نسخة Compat لتتطابق مع صفحة الأدمن) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
+<script>
     const firebaseConfig = {
         apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
         authDomain: "multischoolattendance.firebaseapp.com",
@@ -37,8 +38,8 @@
         measurementId: "G-791M6F7WMC"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     window.loginToSchool = async () => {
         const code = document.getElementById('schoolCodeInput').value.trim();
@@ -53,10 +54,10 @@
         errorMsg.innerText = "جاري التحقق من المدرسة...";
 
         try {
-            const schoolRef = doc(db, "schools", code);
-            const schoolSnap = await getDoc(schoolRef);
+            const schoolRef = db.collection("schools").doc(code);
+            const schoolSnap = await schoolRef.get();
 
-            if (!schoolSnap.exists()) {
+            if (!schoolSnap.exists) {
                 errorMsg.style.color = "red";
                 errorMsg.innerText = "كود المدرسة غير صحيح أو غير موجود!";
                 return;
@@ -64,8 +65,8 @@
 
             const schoolData = schoolSnap.data();
 
-            // فحص هل الموقع الجغرافي مثبت مسبقاً؟ إذا لم يكن موجوداً، نقوم بطلبه لأول مرة فقط
-            if (!schoolData.lat || !schoolData.lng) {
+            // فحص هل الموقع الجغرافي مثبت مسبقاً؟ (بفحص lat و lon)
+            if (!schoolData.lat || !schoolData.lon || schoolData.lat === 0 || schoolData.lon === 0) {
                 errorMsg.innerText = "يرجى السماح بتحديد الموقع الجغرافي (GPS) لتثبيت موقع المدرسة لأول مرة...";
                 
                 if (!navigator.geolocation) {
@@ -78,10 +79,10 @@
                     async (position) => {
                         try {
                             const lat = position.coords.latitude;
-                            const lng = position.coords.longitude;
+                            const lon = position.coords.longitude;
 
-                            // حفظ الإحداثيات تلقائياً في صفحة أو وثيقة الأدمن/المدرسة في فايربيس
-                            await setDoc(schoolRef, { lat: lat, lng: lng }, { merge: true });
+                            // حفظ الإحداثيات مباشرة في صفحة الأدمن وقاعدة البيانات بنفس تسمية حقل lon
+                            await schoolRef.update({ lat: lat, lon: lon });
 
                             errorMsg.style.color = "green";
                             errorMsg.innerText = "تم تثبيت موقع المدرسة بنجاح! جاري الدخول...";
@@ -102,7 +103,7 @@
                     { enableHighAccuracy: true, timeout: 10000 }
                 );
             } else {
-                // إذا كانت الإحداثيات مسجلة مسبقاً، ادخل مباشرة بدون طلب إذن
+                // إذا كانت الإحداثيات مسجلة مسبقاً، الدخول المباشر إلى لوحة التحكم
                 window.location.href = `dashboard.html?school=${code}`;
             }
 
