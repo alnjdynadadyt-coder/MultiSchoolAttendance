@@ -32,9 +32,6 @@
         /* مؤشرات بصرية لصفوف الجدول */
         .row-active { background-color: #f0fff4 !important; } /* أخضر فاتح للمدارس النشطة */
         .row-inactive { background-color: #fff5f5 !important; } /* أحمر/رمادي فاتح للمدارس غير النشطة */
-
-        #unauthorizedBox { display: none; text-align: center; padding: 50px; background: white; border-radius: 10px; max-width: 500px; margin: 50px auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        #unauthorizedBox h3 { color: #dc3545; }
     </style>
 </head>
 <body>
@@ -81,13 +78,6 @@
     </div>
 </div>
 
-<!-- حماية الرابط -->
-<div id="unauthorizedBox">
-    <h3>⚠️ عذراً، غير مسموح لك بالدخول مباشرة!</h3>
-    <p>يجب الوصول لهذه الصفحة من خلال زر لوحة الآدمن الرئيسية.</p>
-    <a href="admin.html" class="back-link" style="margin-top: 15px;">العودة للوحة الآدمن</a>
-</div>
-
 <!-- مكتبات Firebase (نسخة Compat المتوافقة) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -106,15 +96,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin') !== 'super') {
-        document.getElementById('mainContainer').style.display = 'none';
-        document.getElementById('unauthorizedBox').style.display = 'block';
-    } else {
-        document.getElementById('mainContainer').style.display = 'block';
-        document.getElementById('unauthorizedBox').style.display = 'none';
+    // تم إزالة شروط الحماية، وتحميل البيانات مباشرة عند فتح الصفحة
+    window.addEventListener("DOMContentLoaded", () => {
+        if (!isEditing) {
+            document.getElementById("schoolId").value = generateRandomSchoolId();
+        }
         loadSchoolsAndActivity();
-    }
+    });
 
     let isEditing = false;
     let oldSchoolId = "";
@@ -125,12 +113,6 @@
         const randomDigits = Math.floor(10 + Math.random() * 90);
         return `${randomChar}${randomDigits}`;
     }
-
-    window.addEventListener("DOMContentLoaded", () => {
-        if (!isEditing) {
-            document.getElementById("schoolId").value = generateRandomSchoolId();
-        }
-    });
 
     window.getMyLocation = function() {
         if (!navigator.geolocation) {
