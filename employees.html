@@ -21,7 +21,8 @@
 <body>
 
 <div class="container">
-    <a href="dashboard.html" class="back-link">← العودة لوحة تحكم المدرسة</a>
+    <!-- زر عودة ديناميكي يدعم صلاحيات المشرف العام -->
+    <a href="dashboard.html" id="backBtn" class="back-link">← العودة لوحة تحكم المدرسة</a>
     <h2 id="schoolEmpTitle" style="color:#6c757d; text-align:center;">👥 إدارة الموظفين</h2>
     
     <div class="input-group">
@@ -63,6 +64,16 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
+    // التحقق من معلمات الرابط وصلاحيات المشرف العام
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.get('admin') === 'true';
+
+    // ضبط رابط زر العودة ديناميكياً بناءً على الصلاحية
+    const backBtn = document.getElementById('backBtn');
+    if (isAdmin) {
+        backBtn.href = "dashboard.html?admin=true";
+    }
 
     // جلب كود المدرسة من الذاكرة المؤقتة
     const schoolId = localStorage.getItem("currentSchoolId");
