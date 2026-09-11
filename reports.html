@@ -7,10 +7,11 @@
         body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
         .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
         
+        /* تنسيق زر العودة ليكون في الأعلى وواضحاً تماماً */
         .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
         .back-link:hover { background: #d0e1fd; }
 
-        /* تنسيق ترويسة اليوم والتاريخ الجديدة */
+        /* تنسيق ترويسة اليوم والتاريخ */
         .report-day-badge { background: #e2f0d9; color: #385723; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 16px; border: 1px solid #b7e1cd; }
 
         .input-group { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; background: #fff3cd; padding: 15px; border-radius: 8px; align-items: center; }
@@ -32,14 +33,13 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; word-wrap: break-word; }
         th { background-color: #ffc107; color: #333; }
         
-        /* تخصيص عرض الأعمدة */
-        th:nth-child(1), td:nth-child(1) { width: 8%; }  /* الكود */
-        th:nth-child(2), td:nth-child(2) { width: 25%; } /* الاسم */
-        th:nth-child(3), td:nth-child(3) { width: 12%; } /* التصنيف */
-        th:nth-child(4), td:nth-child(4) { width: 12%; } /* وقت الحضور */
-        th:nth-child(5), td:nth-child(5) { width: 12%; } /* وقت الانصراف */
-        th:nth-child(6), td:nth-child(6) { width: 13%; } /* الحالة */
-        th:nth-child(7), td:nth-child(7) { width: 18%; } /* السبب */
+        th:nth-child(1), td:nth-child(1) { width: 8%; }  
+        th:nth-child(2), td:nth-child(2) { width: 25%; } 
+        th:nth-child(3), td:nth-child(3) { width: 12%; } 
+        th:nth-child(4), td:nth-child(4) { width: 12%; } 
+        th:nth-child(5), td:nth-child(5) { width: 12%; } 
+        th:nth-child(6), td:nth-child(6) { width: 13%; } 
+        th:nth-child(7), td:nth-child(7) { width: 18%; } 
 
         .stats { display: flex; gap: 15px; margin-bottom: 15px; font-weight: bold; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 5px; }
 
@@ -54,7 +54,7 @@
 <body>
 
 <div class="container" id="printableArea">
-    <!-- تم نقل زر العودة إلى أعلى الصفحة هنا -->
+    <!-- زر العودة موضوع هنا في أول السطور تماماً داخل الحاوية -->
     <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم</a>
     
     <div class="report-header">
@@ -66,7 +66,6 @@
 
     <h2 id="mainHeading" style="color:#d39e00; text-align:center;">📊 تقارير الحضور والغياب اليومية</h2>
     
-    <!-- ترويسة اليوم والتاريخ الجديدة -->
     <div id="reportDayDateBadge" class="report-day-badge">
         📅 اليوم والتاريخ: جاري التحميل...
     </div>
@@ -136,26 +135,33 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // التقاط كود المدرسة وصلاحية المشرف من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get("school");
     const isAdmin = urlParams.get('admin') === 'true';
 
+    // برمجة زر العودة وتثبيته في الأعلى مع الحفاظ على صلاحية المشرف
     const backBtn = document.getElementById('backDashboardBtn');
-    if (schoolId) {
-        let backUrl = `dashboard.html?school=${schoolId}`;
-        if (isAdmin) {
-            backUrl += `&admin=true`;
-            backBtn.innerText = "← العودة لوحة التحكم (بصلاحية المشرف)";
+    if (backBtn) {
+        // ضمان وضعه كأول عنصر تماماً داخل الحاوية برمجياً أيضاً
+        const container = document.querySelector('.container');
+        if (container) {
+            container.insertBefore(backBtn, container.firstChild);
         }
-        backBtn.href = backUrl;
-    } else {
-        backBtn.style.display = 'none';
+
+        if (schoolId) {
+            let backUrl = `dashboard.html?school=${schoolId}`;
+            if (isAdmin) {
+                backUrl += `&admin=true`;
+                backBtn.innerText = "← العودة لوحة التحكم (بصلاحية المشرف)";
+            }
+            backBtn.href = backUrl;
+        } else {
+            backBtn.style.display = 'none';
+        }
     }
 
     let schoolNameGlobal = "المدرسة";
 
-    // جلب اسم المدرسة وتحديث العناوين
     if (schoolId) {
         getDoc(doc(db, "schools", schoolId)).then((schoolDoc) => {
             if (schoolDoc.exists()) {
@@ -167,11 +173,9 @@
         });
     }
 
-    // مراجع المجموعات الفرعية للمدرسة الحالية
     const getEmployeesRef = () => collection(db, "schools", schoolId, "employees");
     const getAttendanceRef = () => collection(db, "schools", schoolId, "attendance");
 
-    // ضبط التاريخ الافتراضي بدقة ليطابق توقيت بغداد المحلي
     const baghdadDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' });
     document.getElementById('reportDate').value = baghdadDateStr;
 
