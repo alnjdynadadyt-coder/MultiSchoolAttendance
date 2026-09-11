@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم الرئيسية - لوحة الإدارة</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; padding: 20px; background: #eef2f3; text-align: center; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn-nav { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; color: white; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; box-sizing: border-box; font-weight: bold; }
+        .btn-quick { background: #28a745; }
+        .btn-manual { background: #007bff; }
+        .btn-emps { background: #6c757d; }
+        .btn-reports { background: #ffc107; color: #333; }
+        .back-btn { background: #6c757d; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; display: inline-block; margin-bottom: 15px; font-size: 14px; }
+        
+        .external-box { margin-top: 25px; background: #e8f4fd; padding: 15px; border-radius: 8px; border: 1px solid #b8daff; text-align: center; }
+        .external-box input { width: 55%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; direction: ltr; text-align: left; font-size: 13px; }
+        .external-box button { background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .external-box a { background: #28a745; color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div style="text-align: right;">
+        <a href="index.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
+    </div>
+
+    <h2 style="color:#007bff;">نظام إدارة الحضور والتقارير</h2>
+    <h3 id="schoolTitle">جاري تحميل اسم المدرسة...</h3>
+    <hr style="margin: 20px 0;">
+
+    <a href="quick.html" class="btn-nav btn-quick">⚡ التسجيل السريع (بحث وأزرار حضور)</a>
+    <a href="manual.html" class="btn-nav btn-manual">📝 التسجيل اليدوي المفصل</a>
+    <a href="employees.html" class="btn-nav btn-emps">👥 إدارة الموظفين (إضافة وتعديل)</a>
+    <a href="reports.html" class="btn-nav btn-reports">📊 الحضور، الغياب والتقارير</a>
+    <a href="summary.html" class="btn-nav" style="background: #6f42c1;">📈 الملخص الشامل للحضور والغياب</a>
+    <a href="advanced_reports.html" class="btn-nav" style="background: #17a2b8;">📈 التقارير المتقدمة وفلترة التواريخ</a>
+    <a href="backup.html" class="btn-nav" style="background: #343a40;">💾 النسخ الاحتياطي والاستيراد</a>
+
+    <!-- قسم رابط التسجيل الخارجي للموظفين خاص بهذه المدرسة -->
+    <div class="external-box">
+        <h4 style="margin-top: 0; color: #004085;">🔗 رابط تسجيل الحضور الخارجي لموظفي المدرسة</h4>
+        <p style="font-size: 12px; color: #333; margin-bottom: 10px;">انسخ الرابط أدناه وأرسله لموظفي هذه المدرسة:</p>
+        <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="externalLink" readonly value="">
+            <button onclick="copyLink()">نسخ الرابط</button>
+            <a id="openLinkBtn" href="#" target="_blank">فتح الصفحة</a>
+        </div>
+    </div>
+</div>
+
+<!-- مكتبات Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // جلب كود المدرسة المخزن مؤقتاً
+    const schoolId = localStorage.getItem("currentSchoolId");
+
+    if (!schoolId) {
+        alert("لم يتم تحديد المدرسة! سيتم توجيهك للصفحة الرئيسية.");
+        window.location.href = "index.html";
+    } else {
+        // جلب اسم المدرسة الحقيقي من القاعدة لعرضه في العنوان
+        db.collection("schools").doc(schoolId).get().then((doc) => {
+            if (doc.exists) {
+                document.getElementById("schoolTitle").innerText = doc.data().name + " - لوحة الإدارة";
+            } else {
+                document.getElementById("schoolTitle").innerText = "المدرسة: " + schoolId;
+            }
+        });
+    }
+
+    // إعداد رابط التسجيل الخارجي مع تمرير معرف المدرسة ضمن الرابط
+    let currentBase = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+    let regUrl = currentBase + "employee.html?school=" + schoolId; 
+    document.getElementById('externalLink').value = regUrl;
+    document.getElementById('openLinkBtn').href = regUrl;
+
+    window.copyLink = () => {
+        let copyText = document.getElementById("externalLink");
+        copyText.select();
+        navigator.clipboard.writeText(copyText.value);
+        alert("تم نسخ رابط التسجيل الخارجي الخاص بالمدرسة بنجاح!");
+    }
+</script>
+
+</body>
+</html>
