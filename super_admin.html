@@ -2,102 +2,94 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة المشرف العام - متابعة وإدارة المدارس</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #eef2f3; margin: 0; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
-        /* زر العودة للوحة الرئيسية */
-        .back-link { display: inline-block; margin-bottom: 20px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #007bff; text-decoration: none; font-weight: bold; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
         .back-link:hover { background: #d0e1fd; }
 
-        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        h2, h3 { color: #333; }
         
-        .card { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; }
-        .card h3 { margin-top: 0; color: #007bff; font-size: 18px; }
+        .card { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ddd; }
+        
+        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input:disabled { background-color: #e9ecef; cursor: not-allowed; }
+        .row-group { display: flex; gap: 10px; }
+        .row-group input { width: 50%; }
 
-        .form-group { margin-bottom: 12px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; color: white; }
+        .btn-green { background-color: #4CAF50; }
+        .btn-yellow { background-color: #ff9800; color: black; }
+        .btn-purple { background-color: #6f42c1; width: 100%; margin-bottom: 10px; }
 
-        button { padding: 10px 18px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px; color: white; }
-        .btn-add { background: #28a745; }
-        .btn-add:hover { background: #218838; }
-        .btn-edit { background: #ffc107; color: #333; }
-        .btn-edit:hover { background: #e0a800; }
-        .btn-cancel { background: #6c757d; display: none; margin-right: 10px; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; }
         th { background-color: #343a40; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
 
-        .actions-cell { display: flex; gap: 8px; justify-content: center; }
-        
-        .alert { padding: 10px; margin-bottom: 15px; border-radius: 5px; text-align: center; font-weight: bold; display: none; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        
-        #unauthorizedBox { display: none; text-align: center; padding: 50px; background: white; border-radius: 10px; max-width: 600px; margin: 50px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        #unauthorizedBox { display: none; text-align: center; padding: 50px; background: white; border-radius: 10px; max-width: 500px; margin: 50px auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         #unauthorizedBox h3 { color: #dc3545; }
     </style>
 </head>
 <body>
 
-<!-- محتوى اللوحة الرئيسي (يظهر لمن يمتلك الصلاحية) -->
+<!-- محتوى لوحة المشرف العام -->
 <div class="container" id="mainContainer">
-    <a href="dashboard.html" id="backDashboardBtn" class="back-link">← العودة للوحة التحكم الرئيسية</a>
+    <a href="admin.html" class="back-link">← العودة لوحة الآدمن الرئيسية</a>
 
     <h2>👑 لوحة المشرف العام - متابعة وإدارة المدارس</h2>
     
-    <div id="alertBox" class="alert"></div>
-
-    <!-- نموذج إضافة أو تعديل مدرسة -->
+    <!-- نموذج إضافة أو تعديل مدرسة (مطابق تماماً لصفحة الآدمن) -->
     <div class="card">
-        <h3 id="formTitle">➕ إضافة مدرسة جديدة للنظام</h3>
-        <form id="schoolForm">
-            <input type="hidden" id="schoolId">
-            <div class="form-group">
-                <label for="schoolName">اسم المدرسة:</label>
-                <input type="text" id="schoolName" placeholder="أدخل اسم المدرسة هنا..." required>
-            </div>
-            <div style="display: flex; align-items: center;">
-                <button type="submit" id="submitBtn" class="btn-add">حفظ المدرسة</button>
-                <button type="button" id="cancelBtn" class="btn-cancel" onclick="resetForm()">إلغاء التعديل</button>
-            </div>
-        </form>
+        <h3 id="formTitle">إضافة مدرسة جديدة</h3>
+        <input type="text" id="schoolId" placeholder="كود المدرسة (يُولّد تلقائياً)" readonly>
+        <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
+        
+        <div class="row-group">
+            <input type="number" step="any" id="schoolLat" placeholder="خط العرض (Latitude)">
+            <input type="number" step="any" id="schoolLon" placeholder="خط الطول (Longitude)">
+        </div>
+        <button type="button" class="btn-purple" onclick="getMyLocation()">📍 جلب إحداثيات موقعي الحالي تلقائياً</button>
+
+        <button id="saveSchoolBtn" class="btn-green" style="width: 100%; font-size: 15px; margin-top: 5px;">حفظ المدرسة</button>
+        <button id="cancelEditBtn" style="width: 100%; background: #6c757d; display: none; margin-top: 5px;">إلغاء التعديل</button>
     </div>
 
-    <!-- جدول عرض المدارس والمتابعة -->
+    <!-- جدول المتابعة (حالة دخول المدير + عدد الموظفين + تعديل الاسم) -->
     <div class="card">
         <h3>📊 جدول متابعة حالة المدارس والنشاط</h3>
         <table>
             <thead>
                 <tr>
-                    <th style="width: 25%;">اسم المدرسة</th>
-                    <th style="width: 20%;">حالة دخول المدير 🔑</th>
-                    <th style="width: 20%;">عدد الموظفين المدخلين 👥</th>
-                    <th style="width: 35%;">الإجراءات المتاحة</th>
+                    <th style="width: 15%;">الكود</th>
+                    <th style="width: 30%;">اسم المدرسة</th>
+                    <th style="width: 20%;">دخول المدير 🔑</th>
+                    <th style="width: 15%;">الموظفين 👥</th>
+                    <th style="width: 20%;">الإجراء</th>
                 </tr>
             </thead>
             <tbody id="schoolsTableBody">
-                <tr><td colspan="4" style="color: #6c757d;">جاري جلب بيانات المدارس...</td></tr>
+                <tr><td colspan="5" style="color: #6c757d;">جاري جلب بيانات المدارس...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- صندوق الحماية في حال لم يتم الدخول بصلاحية المشرف -->
+<!-- حماية الرابط -->
 <div id="unauthorizedBox">
     <h3>⚠️ عذراً، غير مسموح لك بالدخول مباشرة!</h3>
-    <p>هذه الصفحة مخصصة للمشرف العام فقط ويجب الوصول إليها من خلال الابط المعتمد.</p>
-    <a href="dashboard.html" class="back-link" style="margin-top: 15px;">العودة للوحة الرئيسية</a>
+    <p>يجب الوصول لهذه الصفحة من خلال زر لوحة الآدمن الرئيسية.</p>
+    <a href="admin.html" class="back-link" style="margin-top: 15px;">العودة للوحة الآدمن</a>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+<!-- مكتبات Firebase (نسخة Compat المتوافقة مع admin.html) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
+<script>
     const firebaseConfig = {
         apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
         authDomain: "multischoolattendance.firebaseapp.com",
@@ -108,138 +100,182 @@
         measurementId: "G-791M6F7WMC"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    // التحقق من صلاحية المشرف عبر الرابط (مثلاً ?admin=super)
+    // التحقق من صلاحية الوصول عبر الرابط ?admin=super
     const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.get('admin') === 'super';
-
-    if (!isAdmin) {
-        // إخفاء اللوحة وإظهار رسالة المنع إذا لم يكن مشرفاً
+    if (urlParams.get('admin') !== 'super') {
         document.getElementById('mainContainer').style.display = 'none';
         document.getElementById('unauthorizedBox').style.display = 'block';
     } else {
         document.getElementById('mainContainer').style.display = 'block';
         document.getElementById('unauthorizedBox').style.display = 'none';
-        loadSchools(); // تحميل البيانات فقط إذا كان مصرحاً له
+        loadSchoolsAndActivity();
     }
 
-    const schoolsRef = collection(db, "schools");
-    const schoolForm = document.getElementById('schoolForm');
-    const schoolsTableBody = document.getElementById('schoolsTableBody');
-    const formTitle = document.getElementById('formTitle');
-    const submitBtn = document.getElementById('submitBtn');
-    const cancelBtn = document.getElementById('cancelBtn');
-    const schoolIdInput = document.getElementById('schoolId');
-    const schoolNameInput = document.getElementById('schoolName');
-    const alertBox = document.getElementById('alertBox');
+    let isEditing = false;
+    let oldSchoolId = "";
 
-    function showAlert(message, type = 'success') {
-        alertBox.innerText = message;
-        alertBox.className = `alert ${type === 'success' ? 'alert-success' : 'alert-error'}`;
-        alertBox.style.display = 'block';
-        setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
+    function generateRandomSchoolId() {
+        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const randomChar = chars.charAt(Math.floor(Math.random() * chars.length));
+        const randomDigits = Math.floor(10 + Math.random() * 90);
+        return `${randomChar}${randomDigits}`;
     }
 
-    // دالة جلب المدارس وعرض حالة الدخول وعدد الموظفين
-    async function loadSchools() {
+    window.addEventListener("DOMContentLoaded", () => {
+        if (!isEditing) {
+            document.getElementById("schoolId").value = generateRandomSchoolId();
+        }
+    });
+
+    window.getMyLocation = function() {
+        if (!navigator.geolocation) {
+            alert("المتصفح لا يدعم تحديد الموقع الجغرافي.");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                document.getElementById("schoolLat").value = position.coords.latitude;
+                document.getElementById("schoolLon").value = position.coords.longitude;
+                alert("تم تحديد الإحداثيات بنجاح!");
+            },
+            (error) => { alert("فشل في الحصول على الموقع: " + error.message); },
+            { enableHighAccuracy: true }
+        );
+    }
+
+    // جلب المدارس وعرض حالة دخول المدير وعدد الموظفين
+    async function loadSchoolsAndActivity() {
+        const tbody = document.getElementById("schoolsTableBody");
+        tbody.innerHTML = `<tr><td colspan="5">جاري التحميل...</td></tr>`;
+
         try {
-            const snapshot = await getDocs(schoolsRef);
-            let rows = "";
-            
+            const snapshot = await db.collection("schools").get();
             if (snapshot.empty) {
-                schoolsTableBody.innerHTML = `<tr><td colspan="4" style="color: #6c757d;">لا توجد مدارس مسجلة حتى الآن.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5">لا توجد مدارس مسجلة.</td></tr>`;
                 return;
             }
 
+            let rows = "";
             for (const docSnap of snapshot.docs) {
                 let data = docSnap.data();
                 let sId = docSnap.id;
                 let sName = data.name || 'بدون اسم';
 
-                // 1. فحص حالة دخول المدير
+                // حالة دخول المدير
                 let loginStatus = data.hasLoggedIn 
-                    ? `<span style="color: #28a745; font-weight: bold;">🟢 قام بالدخول</span>` 
-                    : `<span style="color: #dc3545; font-weight: bold;">🔴 لم يدخل بعد</span>`;
+                    ? `<span style="color: #28a745; font-weight: bold;">🟢 دخل</span>` 
+                    : `<span style="color: #dc3545; font-weight: bold;">🔴 لم يدخل</span>`;
 
-                // 2. حساب أو قراءة عدد الموظفين في الفرعي (employees collection لكل مدرسة)
-                let empCount = data.employeeCount || 0;
-                // كاحتياطي دقيق: يمكننا جلب العدد الفعلي مباشرة من مجموعة الموظفين لكل مدرسة
+                // عدد الموظفين الفعلي من مجموعة الفرع
+                let empCount = 0;
                 try {
-                    const employeesSnap = await getDocs(collection(db, "schools", sId, "employees"));
-                    empCount = employeesSnap.size;
-                } catch (err) {
-                    // في حال عدم وجود المجموعه الفرعية بعد
+                    const empSnap = await db.collection("schools").doc(sId).collection("employees").get();
+                    empCount = empSnap.size;
+                } catch (e) {
+                    empCount = data.employeeCount || 0;
                 }
 
                 rows += `
                     <tr>
-                        <td style="font-weight: bold; text-align: right; padding-right: 15px;">${sName}</td>
+                        <td style="font-family: monospace;">${sId}</td>
+                        <td style="font-weight: bold; text-align: right; padding-right: 10px;">${sName}</td>
                         <td>${loginStatus}</td>
-                        <td><span style="background: #e9ecef; padding: 5px 12px; border-radius: 12px; font-weight: bold;">${empCount} موظف</span></td>
-                        <td class="actions-cell">
-                            <button class="btn-edit" onclick="window.editSchool('${sId}', '${sName.replace(/'/g, "\\'")}')">✏️ تعديل الاسم</button>
+                        <td><b>${empCount}</b></td>
+                        <td>
+                            <button class="btn-yellow" onclick="editSchool('${sId}', '${sName.replace(/'/g, "\\'")}', '${data.lat || ""}', '${data.lon || ""}')">تعديل</button>
                         </td>
                     </tr>
                 `;
             }
-            schoolsTableBody.innerHTML = rows;
+            tbody.innerHTML = rows;
         } catch (error) {
-            console.error(error);
-            schoolsTableBody.innerHTML = `<tr><td colspan="4" style="color: red;">حدث خطأ أثناء تحميل بيانات المدارس.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="color: red;">خطأ في جلب البيانات: ${error.message}</td></tr>`;
         }
     }
 
-    // إرسال النموذج (إضافة أو تعديل)
-    schoolForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        let name = schoolNameInput.value.trim();
-        let sId = schoolIdInput.value;
+    // حفظ أو تعديل المدرسة
+    document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
+        const sId = document.getElementById("schoolId").value.trim();
+        const sName = document.getElementById("schoolName").value.trim();
+        const sLat = parseFloat(document.getElementById("schoolLat").value);
+        const sLon = parseFloat(document.getElementById("schoolLon").value);
 
-        if (!name) return;
+        if (!sId || !sName) {
+            alert("الرجاء ملء اسم المدرسة وكودها!");
+            return;
+        }
+
+        const schoolData = {
+            name: sName,
+            lat: isNaN(sLat) ? 0 : sLat,
+            lon: isNaN(sLon) ? 0 : sLon,
+            hasLoggedIn: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
         try {
-            if (sId) {
-                const schoolRef = doc(db, "schools", sId);
-                await updateDoc(schoolRef, { name: name });
-                showAlert("تم تحديث اسم المدرسة بنجاح!");
-            } else {
-                await addDoc(schoolsRef, { 
-                    name: name, 
-                    hasLoggedIn: false, 
-                    employeeCount: 0,
-                    createdAt: new Date().toISOString()
+            if (isEditing) {
+                await db.collection("schools").doc(sId).update({
+                    name: sName,
+                    lat: schoolData.lat,
+                    lon: schoolData.lon
                 });
-                showAlert("تمت إضافة المدرسة الجديدة بنجاح!");
+                alert("تم تحديث بيانات المدرسة بنجاح!");
+            } else {
+                const docCheck = await db.collection("schools").doc(sId).get();
+                if (docCheck.exists) {
+                    document.getElementById("schoolId").value = generateRandomSchoolId();
+                    alert("تم توليد كود جديد لتجنب التكرار، اضغط حفظ مجدداً.");
+                    return;
+                }
+                await db.collection("schools").doc(sId).set(schoolData);
+                alert("تم إضافة المدرسة بنجاح!");
             }
             resetForm();
-            loadSchools();
+            loadSchoolsAndActivity();
         } catch (error) {
-            console.error(error);
-            showAlert("حدث خطأ أثناء الحفظ، يرجى المحاولة مرة أخرى.", "error");
+            alert("حدث خطأ: " + error.message);
         }
     });
 
-    window.editSchool = (id, name) => {
-        schoolIdInput.value = id;
-        schoolNameInput.value = name;
-        formTitle.innerText = "✏️ تعديل اسم المدرسة";
-        submitBtn.innerText = "حفظ التعديلات";
-        submitBtn.className = "btn-edit";
-        cancelBtn.style.display = "inline-block";
+    window.editSchool = function(sId, sName, sLat, sLon) {
+        oldSchoolId = sId;
+        const schoolIdInput = document.getElementById("schoolId");
+        schoolIdInput.value = sId;
+        schoolIdInput.disabled = true;
+        
+        document.getElementById("schoolName").value = sName;
+        document.getElementById("schoolLat").value = sLat;
+        document.getElementById("schoolLon").value = sLon;
+        
+        document.getElementById("formTitle").innerText = "تعديل بيانات المدرسة: " + sId;
+        document.getElementById("saveSchoolBtn").innerText = "حفظ التعديلات";
+        document.getElementById("cancelEditBtn").style.display = "block";
+        isEditing = true;
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    }
 
-    window.resetForm = () => {
-        schoolIdInput.value = "";
-        schoolNameInput.value = "";
-        formTitle.innerText = "➕ إضافة مدرسة جديدة للنظام";
-        submitBtn.innerText = "حفظ المدرسة";
-        submitBtn.className = "btn-add";
-        cancelBtn.style.display = "none";
-    };
+    document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
+
+    function resetForm() {
+        const schoolIdInput = document.getElementById("schoolId");
+        schoolIdInput.disabled = false;
+        schoolIdInput.value = generateRandomSchoolId();
+        
+        document.getElementById("schoolName").value = "";
+        document.getElementById("schoolLat").value = "";
+        document.getElementById("schoolLon").value = "";
+        document.getElementById("formTitle").innerText = "إضافة مدرسة جديدة";
+        document.getElementById("saveSchoolBtn").innerText = "حفظ المدرسة";
+        document.getElementById("cancelEditBtn").style.display = "none";
+        isEditing = false;
+        oldSchoolId = "";
+    }
 </script>
 
 </body>
 </html>
+ 
