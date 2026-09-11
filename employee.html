@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تسجيل الحضور - المنصة المدرسية</title>
+    <title>تسجيل الحضور اليومي - المنصة المدرسية</title>
     <style>
         body { font-family: Tahoma, sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
         .container { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -21,7 +21,7 @@
 <body>
 <div class="container">
     <h2 id="pageTitle">تسجيل الحضور اليومي</h2>
-    <div id="statusMsg" style="background: #e2f0d9; color: #385723;">جاري التحقق من إحداثيات المدرسة والموقع الجغرافي...</div>
+    <div id="statusMsg" style="background: #e2f0d9; color: #385723;">جاري التحقق من إحداثيات المدرسة وموقعك...</div>
     
     <div id="regArea" style="display:none;">
         <input type="text" id="empCode" placeholder="أدخل كود الموظف">
@@ -55,7 +55,7 @@
     </div>
 </div>
 
-<!-- مكتبات Firebase (نسخة Compat) -->
+<!-- مكتبات Firebase (نسخة Compat لتجنب مشاكل النطاقات وتصدير الدوال) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -79,15 +79,16 @@
 
     if (!schoolId) {
         alert("لم يتم تحديد المدرسة في الرابط!");
-        document.getElementById('statusMsg').style.background = "#f8f9fa";
-        document.getElementById('statusMsg').style.color = "#721c24";
-        document.getElementById('statusMsg').innerText = "خطأ: لم يتم تحديد كود المدرسة في الرابط.";
+        const msgDiv = document.getElementById('statusMsg');
+        msgDiv.style.background = "#f8f9fa";
+        msgDiv.style.color = "#721c24";
+        msgDiv.innerText = "خطأ: لم يتم تحديد كود المدرسة في الرابط.";
         throw new Error("Missing school ID");
     }
 
     let isLocationVerified = false;
 
-    // دالة حساب المسافة بين نقطتين جغرافيتين (بالأمتار)
+    // دالة لحساب المسافة الدقيقة بالأمتار بين إحداثيات المدرسة وإحداثيات المستخدم
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3; // نصف قطر الأرض بالمتر
         const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -99,7 +100,7 @@
         return R * c;
     }
 
-    // جلب بيانات المدرسة من قاعدة البيانات والتحقق من الموقع
+    // التحقق من موقع المدرسة وإحداثياتها المسجلة من لوحة المشرف
     async function initSchoolAndLocation() {
         const msgDiv = document.getElementById('statusMsg');
         try {
@@ -107,17 +108,17 @@
             if (!schoolDoc.exists) {
                 msgDiv.style.background = "#f8f9fa";
                 msgDiv.style.color = "#721c24";
-                msgDiv.innerText = "عذراً، المدرسة غير مسجلة في النظام!";
+                msgDiv.innerText = "عذراً، هذه المدرسة غير مسجلة في النظام!";
                 return;
             }
 
             const schoolData = schoolDoc.data();
             document.getElementById('pageTitle').innerText = `تسجيل الحضور - ${schoolData.name}`;
 
-            if (!schoolData.lat || !schoolData.lon) {
+            if (schoolData.lat === undefined || schoolData.lon === undefined || (schoolData.lat === 0 && schoolData.lon === 0)) {
                 msgDiv.style.background = "#f8f9fa";
                 msgDiv.style.color = "#721c24";
-                msgDiv.innerText = "تنبيه: لم يتم تحديد الموقع الجغرافي (الإحداثيات) لهذه المدرسة من قبل المشرف العام.";
+                msgDiv.innerText = "تنبيه: لم يتم تعيين إحداثيات GPS لهذه المدرسة من قبل المشرف العام بعد.";
                 return;
             }
 
@@ -137,23 +138,23 @@
                     const userLon = pos.coords.longitude;
                     const dist = calculateDistance(schoolLat, schoolLon, userLat, userLon);
 
-                    // السماح في نطاق 100 متر تقريباً
+                    // السماح ضمن نطاق 100 متر تقريباً
                     if (dist <= 100) {
                         isLocationVerified = true;
                         msgDiv.style.background = "#e2f0d9";
                         msgDiv.style.color = "#385723";
-                        msgDiv.innerText = `أهلاً بك، أنت داخل النطاق المسموح للمدرسة (المسافة: ${Math.round(dist)} متر). يمكنك التسجيل الآن.`;
+                        msgDiv.innerText = `أهلاً بك، أنت ضمن النطاق المسموح (المسافة: ${Math.round(dist)} متر). يمكنك التسجيل الآن.`;
                         document.getElementById('regArea').style.display = "block";
                     } else {
                         msgDiv.style.background = "#f8f9fa";
                         msgDiv.style.color = "#721c24";
-                        msgDiv.innerText = `عذراً، أنت خارج نطاق المدرسة المسجل (المسافة الحالية: ${Math.round(dist)} متر). يجب أن تكون ضمن نطاق 100 متر لتسجيل الحضور.`;
+                        msgDiv.innerText = `عذراً، أنت خارج نطاق المدرسة المسجل (المسافة الحالية: ${Math.round(dist)} متر). يجب أن تكون ضمن نطاق 100 متر.`;
                     }
                 },
                 (error) => {
                     msgDiv.style.background = "#f8f9fa";
                     msgDiv.style.color = "#721c24";
-                    msgDiv.innerText = "يرجى السماح بالوصول للموقع الجغرافي (GPS) لإتمام التحقق.";
+                    msgDiv.innerText = "يرجى السماح بالوصول للموقع الجغرافي (GPS) لإتمام التحقق من النطاق.";
                 },
                 { enableHighAccuracy: true }
             );
@@ -162,7 +163,7 @@
             console.error(e);
             msgDiv.style.background = "#f8f9fa";
             msgDiv.style.color = "#721c24";
-            msgDiv.innerText = "حدث خطأ أثناء جلب بيانات المدرسة.";
+            msgDiv.innerText = "حدث خطأ أثناء الاتصال بقاعدة البيانات.";
         }
     }
 
@@ -178,17 +179,19 @@
         return "08:10";
     };
 
-    window.registerAttendance = async (action) => {
+    // دالة تسجيل الحضور والانصراف المرتبطة بزرار الواجهة
+    window.registerAttendance = async function(action) {
         if (!isLocationVerified) return alert("الموقع غير مؤكد أو أنك خارج النطاق المسموح (100 متر)!");
         
         const code = document.getElementById('empCode').value.trim();
         if (!code) return alert("يرجى إدخال كود الموظف!");
 
         try {
-            const empSnap = await db.collection("schools").doc(schoolId).collection("employees").doc(code).get();
-            if (!empSnap.exists) return alert("كود الموظف غير صحيح أو غير تابع لهذه المدرسة!");
+            // جلب الموظف من سياق المدرسة المحددة
+            const empDoc = await db.collection("schools").doc(schoolId).collection("employees").doc(code).get();
+            if (!empDoc.exists) return alert("كود الموظف غير صحيح أو غير تابع لهذه المدرسة!");
             
-            const empData = empSnap.data();
+            const empData = empDoc.data();
             const nowObj = new Date();
             const currentDate = nowObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' });
             const currentDayName = nowObj.toLocaleDateString('ar-EG', { weekday: 'long', timeZone: 'Asia/Baghdad' });
@@ -197,22 +200,23 @@
 
             let status = (now > getLimit(empData.type, dayIndex, now)) ? "متأخر" : "حاضر";
 
-            const snap = await db.collection("schools").doc(schoolId).collection("attendance")
+            // جلب سجلات الحضور الخاصة بهذه المدرسة
+            const attSnapshot = await db.collection("schools").doc(schoolId).collection("attendance")
                 .where("empCode", "==", code).get();
             
-            let targetDoc = null;
+            let targetDocId = null;
             let existingData = null;
 
-            if (!snap.empty) {
-                let docsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (!attSnapshot.empty) {
+                let docsList = attSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 docsList.sort((a, b) => new Date(b.date) - new Date(a.date));
                 
                 let openRecord = docsList.find(d => !d.exitTime || d.exitTime === "" || d.exitTime === "---");
                 if (openRecord) {
-                    targetDoc = openRecord;
+                    targetDocId = openRecord.id;
                     existingData = openRecord;
                 } else if (docsList.length > 0 && docsList[0].date === currentDate) {
-                    targetDoc = snap.docs.find(d => d.id === docsList[0].id);
+                    targetDocId = docsList[0].id;
                     existingData = docsList[0];
                 }
             }
@@ -274,11 +278,11 @@
                     }
                 }
 
-                await db.collection("schools").doc(schoolId).collection("attendance").doc(targetDoc.id).set({ 
+                await db.collection("schools").doc(schoolId).collection("attendance").doc(targetDocId).update({ 
                     exitTime: now, 
                     exitDate: currentDate,
                     exitDay: currentDayName
-                }, { merge: true });
+                });
 
                 document.getElementById('cardEmpName').innerText = empData.name;
                 document.getElementById('cardDate').innerText = `${existingData.day || ''} - ${existingData.date}`;
@@ -298,10 +302,9 @@
                 alert("تم تسجيل الانصراف بنجاح لتاريخ الحضور: " + existingData.date);
             }
         } catch (error) {
-            alert("حدث خطأ أثناء عملية التسجيل: " + error.message);
+            alert("حدث خطأ أثناء معالجة التسجيل: " + error.message);
         }
     };
 </script>
 </body>
 </html>
- 
