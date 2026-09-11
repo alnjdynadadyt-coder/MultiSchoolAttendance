@@ -22,6 +22,8 @@
         .btn-primary:hover { background: #0056b3; }
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
+        .btn-info { background: #17a2b8; margin-top: 5px; font-size: 14px; padding: 10px; }
+        .btn-info:hover { background: #138496; }
         #status, #adminStatus { margin-top: 15px; padding: 12px; text-align: center; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
@@ -69,13 +71,16 @@
         </div>
         <div class="form-group">
             <label>خط العرض (Lat):</label>
-            <input type="number" id="newLat" step="any" placeholder="مثال: 32.123456">
+            <input type="number" id="newLat" step="any" placeholder="0.0">
         </div>
         <div class="form-group">
             <label>خط الطول (Lng):</label>
-            <input type="number" id="newLng" step="any" placeholder="مثال: 44.123456">
+            <input type="number" id="newLng" step="any" placeholder="0.0">
         </div>
-        <div class="form-group">
+        <!-- زر التقاط الموقع الحالي مباشرة -->
+        <button class="btn-action btn-info" onclick="fetchCurrentLocationForSchool()">📍 جلب إحداثيات موقعي الحالي تلقائياً</button>
+        
+        <div class="form-group" style="margin-top: 15px;">
             <label>نصف القطر المسموح للتسجيل (بالمتر):</label>
             <input type="number" id="newRadius" value="100">
         </div>
@@ -83,7 +88,7 @@
         <div id="adminStatus"></div>
     </div>
 
-    <!-- قسم مشاركة الرابط استيحاءً من نظام النجدين -->
+    <!-- قسم مشاركة الرابط -->
     <div class="external-box">
         <h4 style="margin-top: 0; color: #004085;">🔗 رابط النظام للموظفين</h4>
         <p style="font-size: 12px; color: #333; margin-bottom: 10px;">انسخ الرابط وشاركه مع الكادر:</p>
@@ -153,6 +158,29 @@
         document.getElementById(tabName).classList.add('active');
         btn.classList.add('active');
         if(tabName === 'attendance') loadSchools();
+    }
+
+    // جلب الإحداثيات الحالية للمدير عند الواقوف في المدرسة لتسجيلها تلقائياً
+    window.fetchCurrentLocationForSchool = function() {
+        const statusDiv = document.getElementById("adminStatus");
+        statusDiv.className = "";
+        statusDiv.textContent = "جاري التقاط إحداثيات موقعك الحالي عبر GPS...";
+
+        if (!navigator.geolocation) {
+            statusDiv.className = "error";
+            statusDiv.textContent = "متصفحك لا يدعم تحديد الموقع الجغرافي.";
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition((position) => {
+            document.getElementById("newLat").value = position.coords.latitude;
+            document.getElementById("newLng").value = position.coords.longitude;
+            statusDiv.className = "success";
+            statusDiv.textContent = "تم بنجاح جلب إحداثيات موقعك الحالي ووضعها في الحقول!";
+        }, (error) => {
+            statusDiv.className = "error";
+            statusDiv.textContent = "فشل الحصول على الموقع. تأكد من تفعيل صلاحيات اليمين/GPS.";
+        }, { enableHighAccuracy: true });
     }
 
     // حساب المسافة (Haversine formula)
