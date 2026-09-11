@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تسجيل دخول مدراء المدارس</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 15px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center; }
+        .btn { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn:hover { background: #0056b3; }
+        #errorMsg { color: red; margin-top: 10px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2 style="color: #333; margin-bottom: 10px;">بوابة دخول المدارس</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">أدخل كود المدرسة للتوجه إلى لوحة التحكم</p>
+    
+    <input type="text" id="schoolCodeInput" placeholder="أدخل كود المدرسة (مثل: n1)">
+    <button class="btn" onclick="loginToSchool()">دخول لوحة التحكم</button>
+    <div id="errorMsg"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.loginToSchool = async () => {
+        const code = document.getElementById('schoolCodeInput').value.trim();
+        const errorMsg = document.getElementById('errorMsg');
+        
+        if (!code) {
+            errorMsg.innerText = "يرجى إدخال كود المدرسة!";
+            return;
+        }
+
+        errorMsg.innerText = "جاري التحقق من المدرسة...";
+
+        try {
+            // التحقق مما إذا كانت المدرسة موجودة في قاعدة البيانات
+            const schoolRef = doc(db, "schools", code);
+            const schoolSnap = await getDoc(schoolRef);
+
+            if (schoolSnap.exists()) {
+                // التوجه إلى لوحة التحكم الخاصة بالمدرسة مع الرابط الفرعي
+                window.location.href = `dashboard.html?school=${code}`;
+            } else {
+                errorMsg.innerText = "كود المدرسة غير صحيح أو غير موجود!";
+            }
+        } catch (e) {
+            console.error(e);
+            errorMsg.innerText = "حدث خطأ في الاتصال بقاعدة البيانات.";
+        }
+    };
+</script>
+</body>
+</html>
