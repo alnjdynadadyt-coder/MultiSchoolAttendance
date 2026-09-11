@@ -70,13 +70,21 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // جلب كود المدرسة المخزن مؤقتاً
-    const schoolId = localStorage.getItem("currentSchoolId");
+    // استخراج كود المدرسة من رابط الصفحة (URL Parameters) أو من الذاكرة كبديل
+    const urlParams = new URLSearchParams(window.location.search);
+    let schoolId = urlParams.get('school');
+
+    if (!schoolId) {
+        schoolId = localStorage.getItem("currentSchoolId");
+    }
 
     if (!schoolId) {
         alert("لم يتم تحديد المدرسة! سيتم توجيهك للصفحة الرئيسية.");
         window.location.href = "index.html";
     } else {
+        // حفظ الكود في الذاكرة لضمان استمراريته
+        localStorage.setItem("currentSchoolId", schoolId);
+
         // جلب اسم المدرسة الحقيقي من القاعدة لعرضه في العنوان
         db.collection("schools").doc(schoolId).get().then((doc) => {
             if (doc.exists) {
@@ -96,7 +104,7 @@
         document.getElementById('btnBackup').href = `backup.html?school=${schoolId}`;
     }
 
-    // إعداد رابط التسجيل الخارجي مع تمرير معرف المدرسة ضمن الرابط
+    // إعداد رابط التسجيل الخارجي مع تمرير معرف المدرسة بدقة ضمن الرابط
     let currentBase = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
     let regUrl = currentBase + "employee.html?school=" + schoolId; 
     document.getElementById('externalLink').value = regUrl;
