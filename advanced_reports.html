@@ -2,96 +2,82 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title id="pageTitle">التقارير المتقدمة وفلترة التواريخ</title>
+    <title id="pageTitle">تقارير الموظف المتقدمة</title>
+    <!-- مكتبة الطباعة لملف PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; align-items: flex-end; flex-wrap: wrap; }
-        .filter-group { display: flex; flex-direction: column; gap: 5px; }
-        select, input, button { padding: 9px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; }
-        button { color: white; border: none; font-weight: bold; cursor: pointer; }
-        .btn-filter { background: #007bff; }
-        .btn-pdf { background: #343a40; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; text-align: center; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .filter-box { background: #fffdf5; padding: 20px; border-radius: 8px; border: 1px solid #ffeeba; margin-bottom: 20px; display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+        input, select { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; width: 220px; }
+        .btn { padding: 10px 15px; font-size: 14px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 2px; }
+        .btn-search { background: #28a745; }
+        .btn-excel { background: #17a2b8; }
+        .btn-pdf { background: #dc3545; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 12px; font-size: 14px; text-align: center; }
-        th { background: #17a2b8; color: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; font-size: 14px; text-align: center; }
+        th { background: #007bff; color: white; }
         tr:nth-child(even) { background: #f9f9f9; }
-        .back-link { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; }
-        
         .report-header { text-align: center; margin-bottom: 20px; display: none; }
         .report-header h2 { margin: 5px 0; color: #333; }
         .report-header h3 { margin: 5px 0; color: #555; }
-
-        @media print {
-            .filter-box, .back-link, button { display: none !important; }
-            .report-header { display: block !important; }
-            body { background: white; padding: 0; }
-            .container { box-shadow: none; padding: 0; }
-        }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="container" id="reportContent">
     <div class="report-header">
         <h2 id="printSchoolName">اسم المدرسة</h2>
-        <h3>التقارير المتقدمة وفلترة التواريخ للحضور والغياب</h3>
-        <p>الفترة من: <span id="printStartDate"></span> إلى: <span id="printEndDate"></span></p>
+        <h3>تقارير الموظف المتقدمة</h3>
+        <p>كود الموظف: <span id="printEmpCode">---</span> | الفترة من: <span id="printStartDate">---</span> إلى: <span id="printEndDate">---</span></p>
         <hr style="border: 0.5px solid #ccc;">
     </div>
 
-    <h2 id="mainHeading" style="color: #333; text-align: center;">📈 التقارير المتقدمة وفلترة التواريخ</h2>
+    <h2 id="mainHeading" style="color: #333;">تقارير الموظف المتقدمة</h2>
     
     <div class="filter-box">
-        <div class="filter-group">
-            <label style="font-size:12px; text-align:right;">من تاريخ:</label>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:3px; text-align:right;">من تاريخ:</label>
             <input type="date" id="startDate">
         </div>
-        <div class="filter-group">
-            <label style="font-size:12px; text-align:right;">إلى تاريخ:</label>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:3px; text-align:right;">إلى تاريخ:</label>
             <input type="date" id="endDate">
         </div>
-        <div class="filter-group">
-            <label style="font-size:12px; text-align:right;">تصنيف الموظف:</label>
-            <select id="typeFilter">
-                <option value="الكل">جميع التصنيفات</option>
-                <option value="مدرس">مدرس</option>
-                <option value="إداري">إداري</option>
-                <option value="موظف">موظف</option>
-                <option value="حارس">حارس</option>
-            </select>
+        <div class="no-print">
+            <label style="display:block; font-size:12px; margin-bottom:3px; text-align:right;">كود الموظف:</label>
+            <input type="text" id="empCodeFilter" placeholder="أدخل كود الموظف">
         </div>
-        <div class="filter-group">
-            <button class="btn-filter" onclick="generateAdvancedReport()">بحث وتصفية 🔍</button>
-        </div>
-        <div class="filter-group">
-            <button class="btn-pdf" onclick="window.print()">طباعة / PDF 🖨️</button>
+        <div style="margin-top: 18px;" class="no-print">
+            <button class="btn btn-search" onclick="fetchAdvancedReport()">عرض التقرير</button>
+            <button class="btn btn-excel" onclick="exportToExcel()">تصدير Excel</button>
+            <button class="btn btn-pdf" onclick="exportToPDF()">تصدير PDF</button>
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>الكود</th>
-                <th>اسم الموظف</th>
-                <th>التصنيف</th>
-                <th>إجمالي الحضور</th>
-                <th>إجمالي التأخير</th>
-                <th>إجمالي الغياب</th>
-                <th>إجمالي الإجازات</th>
+                <th>الاسم</th>
+                <th>التاريخ</th>
+                <th>الحضور</th>
+                <th>الانصراف</th>
+                <th>الحالة</th>
+                <th>السبب</th>
             </tr>
         </thead>
-        <tbody id="advancedTableBody">
-            <tr><td colspan="7" style="color: #777;">حدد نطاق التاريخ واضغط على "بحث وتصفية" لعرض التقرير...</td></tr>
+        <tbody id="reportTableBody">
+            <tr><td colspan="6" style="color: #777;">قم بتحديد الفترة وكود الموظف ثم اضغط عرض التقرير</td></tr>
         </tbody>
     </table>
 
-    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم الرئيسية</a>
+    <br>
+    <a href="#" id="backDashboardBtn" style="color: #007bff; text-decoration: none; font-weight: bold;" class="no-print">← العودة لوحة التحكم الرئيسية</a>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
@@ -116,122 +102,121 @@
         backBtn.style.display = 'none';
     }
 
-    // تعيين تاريخ اليوم كقيمة افتراضية لنطاق البحث
-    const baghdadDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' });
-    document.getElementById('startDate').value = baghdadDateStr;
-    document.getElementById('endDate').value = baghdadDateStr;
-
     if (schoolId) {
         getDoc(doc(db, "schools", schoolId)).then((schoolDoc) => {
             if (schoolDoc.exists()) {
                 const schoolName = schoolDoc.data().name;
-                document.getElementById('pageTitle').innerText = `التقارير المتقدمة - ${schoolName}`;
-                document.getElementById('mainHeading').innerText = `📈 التقارير المتقدمة وفلترة التواريخ - ${schoolName}`;
+                document.getElementById('pageTitle').innerText = `تقارير الموظف المتقدمة - ${schoolName}`;
+                document.getElementById('mainHeading').innerText = `تقارير الموظف المتقدمة - ${schoolName}`;
                 document.getElementById('printSchoolName').innerText = schoolName;
             }
         });
     }
 
-    const getEmployeesRef = () => collection(db, "schools", schoolId, "employees");
     const getAttendanceRef = () => collection(db, "schools", schoolId, "attendance");
 
-    window.generateAdvancedReport = async () => {
+    window.fetchAdvancedReport = async () => {
         if (!schoolId) {
             alert("رابط غير صالح! لم يتم تحديد المدرسة.");
             return;
         }
 
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const selectedType = document.getElementById('typeFilter').value;
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const code = document.getElementById('empCodeFilter').value.trim();
 
-        if (!startDate || !endDate) {
-            alert("يرجى تحديد تاريخ البداية وتاريخ النهاية.");
+        if (!code) {
+            alert("يرجى إدخال كود الموظف أولاً!");
             return;
         }
 
-        document.getElementById('printStartDate').innerText = startDate;
-        document.getElementById('printEndDate').innerText = endDate;
-        document.getElementById('advancedTableBody').innerHTML = `<tr><td colspan="7" style="color: #777;">جاري تصفية وتحليل السجلات ضمن النطاق المحدد...</td></tr>`;
+        document.getElementById('printEmpCode').innerText = code;
+        document.getElementById('printStartDate').innerText = start || 'الكل';
+        document.getElementById('printEndDate').innerText = end || 'الكل';
+
+        const tbody = document.getElementById('reportTableBody');
+        tbody.innerHTML = `<tr><td colspan="6">جاري البحث...</td></tr>`;
 
         try {
-            const empSnap = await getDocs(getEmployeesRef());
-            let employeesMap = {};
-            empSnap.forEach(doc => {
-                employeesMap[doc.id] = { id: doc.id, ...doc.data() };
+            const q = query(getAttendanceRef(), where("empCode", "==", code));
+            const snapshot = await getDocs(q);
+            
+            let records = [];
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                if (start && data.date < start) return;
+                if (end && data.date > end) return;
+                records.push(data);
             });
 
-            const attSnap = await getDocs(getAttendanceRef());
-            let attendanceRecords = [];
-            attSnap.forEach(doc => {
-                let data = doc.data();
-                // فلترة السجلات بحيث تكون ضمن التاريخ المحدد
-                if (data.date && data.date >= startDate && data.date <= endDate) {
-                    attendanceRecords.push(data);
-                }
-            });
+            records.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
-            let summaryMap = {};
-            Object.keys(employeesMap).forEach(code => {
-                let emp = employeesMap[code];
-                if (selectedType === "الكل" || (emp.type || 'مدرس') === selectedType) {
-                    summaryMap[code] = {
-                        code: code,
-                        name: emp.name || '---',
-                        type: emp.type || 'مدرس',
-                        presentCount: 0,
-                        lateCount: 0,
-                        absentCount: 0,
-                        leaveCount: 0
-                    };
-                }
-            });
+            tbody.innerHTML = "";
+            let rowsHtml = "";
 
-            attendanceRecords.forEach(att => {
-                let code = att.empCode;
-                if (summaryMap[code]) {
-                    let status = att.status || "";
-                    if (status === "حاضر") {
-                        summaryMap[code].presentCount++;
-                    } else if (status === "متأخر") {
-                        summaryMap[code].lateCount++;
-                    } else if (status === "مجاز" || status === "إجازة") {
-                        summaryMap[code].leaveCount++;
-                    } else if (status === "غائب") {
-                        summaryMap[code].absentCount++;
-                    }
-                }
-            });
-
-            let reportList = Object.values(summaryMap);
-            reportList.sort((a, b) => Number(a.code) - Number(b.code));
-
-            const tbody = document.getElementById('advancedTableBody');
-            if (reportList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="color:red;">لا توجد بيانات مطابقة لهذه الفترة والتصنيف!</td></tr>`;
-                return;
-            }
-
-            let html = "";
-            reportList.forEach(emp => {
-                html += `
+            records.forEach(data => {
+                rowsHtml += `
                     <tr>
-                        <td>${emp.code}</td>
-                        <td style="font-weight:bold; text-align:right; padding-right:15px;">${emp.name}</td>
-                        <td>${emp.type}</td>
-                        <td style="color: #28a745; font-weight:bold;">${emp.presentCount}</td>
-                        <td style="color: #d9534f; font-weight:bold;">${emp.lateCount}</td>
-                        <td style="color: #dc3545; font-weight:bold;">${emp.absentCount}</td>
-                        <td style="color: #ffc107; font-weight:bold;">${emp.leaveCount}</td>
+                        <td>${data.name || '---'}</td>
+                        <td>${data.date || '---'}</td>
+                        <td>${data.time || '---'}</td>
+                        <td>${data.exitTime || '---'}</td>
+                        <td>${data.status || '---'}</td>
+                        <td>${data.reason || '-'}</td>
                     </tr>
                 `;
             });
-            tbody.innerHTML = html;
 
+            if (rowsHtml === "") {
+                tbody.innerHTML = `<tr><td colspan="6" style="color:red;">لا توجد سجلات مطابقة ضمن هذه الفترة!</td></tr>`;
+            } else {
+                tbody.innerHTML = rowsHtml;
+            }
         } catch (error) {
             console.error(error);
-            document.getElementById('advancedTableBody').innerHTML = `<tr><td colspan="7" style="color:red;">حدث خطأ أثناء جلب البيانات.</td></tr>`;
+            alert("حدث خطأ أثناء جلب البيانات.");
         }
+    };
+
+    window.exportToExcel = () => {
+        let excelContent = "\uFEFF";
+        let table = document.querySelector("table");
+        
+        let rows = table.querySelectorAll("tr");
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i], rowData = [];
+            let cols = row.querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++) {
+                rowData.push('"' + cols[j].innerText + '"');
+            }
+            excelContent += rowData.join("\t") + "\n";
+        }
+
+        let blob = new Blob([excelContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = 'advanced_attendance_report.xls';
+        a.click();
+    };
+
+    window.exportToPDF = () => {
+        const element = document.getElementById('reportContent');
+        const opt = {
+            margin:       10,
+            filename:     'employee_report.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        document.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
+        document.querySelector('.report-header').style.display = 'block';
+
+        html2pdf().from(element).set(opt).save().then(() => {
+            document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
+            document.querySelector('.report-header').style.display = 'none';
+        });
     };
 </script>
 </body>
