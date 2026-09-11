@@ -6,7 +6,7 @@
     <style>
         body { font-family: sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center; background-color: #fff; }
         .btn { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn:hover { background: #0056b3; }
         #errorMsg { color: red; margin-top: 10px; font-size: 14px; }
@@ -29,9 +29,18 @@
     <div id="stepPassword" class="hidden">
         <input type="hidden" id="verifiedSchoolCode">
         
-        <!-- تظهر في المرة الأولى (إنشاء كلمة مرور + تأكيد) -->
+        <!-- تظهر في المرة الأولى (تصنيف المدرسة + إنشاء كلمة مرور + تأكيد) -->
         <div id="firstTimeFields" class="hidden">
-            <p style="font-size: 13px; color: #d9534f; margin-bottom: 5px;">هذه المدرسة تسجل لأول مرة، يرجى تعيين كلمة مرور جديدة:</p>
+            <p style="font-size: 13px; color: #d9534f; margin-bottom: 5px;">هذه المدرسة تسجل لأول مرة، يرجى تحديد نوع المدرسة وتعيين كلمة مرور:</p>
+            
+            <select id="newSchoolClassification">
+                <option value="">-- اختر تصنيف دوام المدرسة --</option>
+                <option value="أحادية">أحادية</option>
+                <option value="مزدوجة">مزدوجة</option>
+                <option value="ثلاثية">ثلاثية</option>
+                <option value="مسائية بحته">مسائية بحته</option>
+            </select>
+
             <input type="password" id="newPassword" placeholder="أدخل كلمة المرور">
             <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور">
             <button class="btn" style="background: #28a745;" onclick="setupAndLogin()">حفظ والدخول</button>
@@ -122,13 +131,13 @@
             document.getElementById('stepPassword').classList.remove('hidden');
             errorMsg.innerText = "";
 
-            // فحص هل توجد كلمة مرور مسجلة مسبقاً في القاعدة؟
-            if (!schoolData.password) {
-                // المرة الأولى: إظهار مربعي الإنشاء والتأكيد
+            // فحص هل توجد كلمة مرور مسجلة مسبقاً في القاعدة؟ (أو إذا لم يتم تحديد التصنيف بعد)
+            if (!schoolData.password || !schoolData.classification) {
+                // المرة الأولى: إظهار قائمة التصنيف ومربعي كلمة المرور والتأكيد
                 document.getElementById('firstTimeFields').classList.remove('hidden');
-                document.getElementById('instructionText').innerText = "قم بإنشاء كلمة مرور جديدة لمدير المدرسة";
+                document.getElementById('instructionText').innerText = "إعداد إعدادات المدرسة لمرة واحدة";
             } else {
-                // المرات اللاحقة: إظهار مربع واحد للدخول
+                // المرات اللاحقة: إظهار مربع الدخول فقط دون طلب التصنيف أو كلمة المرور الجديدة
                 document.getElementById('normalLoginFields').classList.remove('hidden');
                 document.getElementById('instructionText').innerText = "أدخل كلمة المرور الخاصة بلوحة التحكم";
             }
@@ -140,12 +149,19 @@
         }
     };
 
-    // حفظ كلمة المرور للمرة الأولى وتأكيدها
+    // حفظ تصنيف المدرسة وكلمة المرور للمرة الأولى وتأكيدها
     window.setupAndLogin = async () => {
         const code = document.getElementById('verifiedSchoolCode').value;
+        const sClassification = document.getElementById('newSchoolClassification').value;
         const p1 = document.getElementById('newPassword').value.trim();
         const p2 = document.getElementById('confirmPassword').value.trim();
         const errorMsg = document.getElementById('errorMsg');
+
+        if (!sClassification) {
+            errorMsg.style.color = "red";
+            errorMsg.innerText = "يرجى اختيار تصنيف دوام المدرسة!";
+            return;
+        }
 
         if (!p1 || !p2) {
             errorMsg.style.color = "red";
@@ -161,12 +177,16 @@
 
         try {
             errorMsg.style.color = "#007bff";
-            errorMsg.innerText = "جاري حفظ كلمة المرور والدخول...";
+            errorMsg.innerText = "جاري حفظ الإعدادات والدخول...";
 
-            await db.collection("schools").doc(code).update({ password: p1 });
+            // حفظ التصنيف وكلمة المرور في قاعدة البيانات لترتبط بصفحات الادمن والمساعد مباشرة
+            await db.collection("schools").doc(code).update({ 
+                classification: sClassification,
+                password: p1 
+            });
 
             errorMsg.style.color = "green";
-            errorMsg.innerText = "تم حفظ كلمة المرور بنجاح! جاري التوجيه...";
+            errorMsg.innerText = "تم الحفظ بنجاح! جاري التوجيه...";
             
             setTimeout(() => {
                 window.location.href = `dashboard.html?school=${code}&admin=true`;
@@ -175,11 +195,11 @@
         } catch (err) {
             console.error(err);
             errorMsg.style.color = "red";
-            errorMsg.innerText = "فشل حفظ كلمة المرور في قاعدة البيانات.";
+            errorMsg.innerText = "فشل حفظ البيانات في قاعدة البيانات.";
         }
     };
 
-    // التحقق من كلمة المرور في المرات اللاحقة
+    // التحقق من كلمة المرور في المرات اللاحقة (دون طلب التصنيف)
     window.verifyPasswordAndLogin = async () => {
         const code = document.getElementById('verifiedSchoolCode').value;
         const enteredPass = document.getElementById('loginPassword').value.trim();
