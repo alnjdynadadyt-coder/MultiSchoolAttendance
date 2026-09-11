@@ -26,6 +26,13 @@
 <body>
 
     <div class="container">
+        <!-- زر الانتقال السريع إلى لوحة متابعة نشاط المدارس -->
+        <div style="margin-bottom: 20px;">
+            <a href="super_admin.html?admin=super" style="display: block; text-align: center; background: #6f42c1; color: white; padding: 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 15px;">
+                👑 الانتقال إلى لوحة متابعة نشاط المدارس (دخول المدير والموظفين)
+            </a>
+        </div>
+
         <h2 id="formTitle">لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
         <!-- حقل كود المدرسة (يتم توليده تلقائياً ويقفل عند التعديل) -->
@@ -76,7 +83,6 @@
             const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
             const randomChar = chars.charAt(Math.floor(Math.random() * chars.length));
             const randomDigits = Math.floor(10 + Math.random() * 90); // رقمين عشوائيين من 10 إلى 99
-            // يمكننا خلطهم عشوائياً لزيادة التنوع (مثلاً حرف ثم رقمين)
             return `${randomChar}${randomDigits}`;
         }
 
@@ -128,7 +134,6 @@
 
             try {
                 if (isEditing) {
-                    // في حالة التعديل، نحدث الاسم والإحداثيات فقط للمستند الحالي للحفاظ على ارتباطات الموظفين والحضور
                     await db.collection("schools").doc(sId).update({
                         name: sName,
                         lat: schoolData.lat,
@@ -142,7 +147,6 @@
                     const schoolRef = db.collection("schools").doc(sId);
                     const docCheck = await schoolRef.get();
                     
-                    // للتأكد بنسبة 100.8% ألا يتطابق الكود مع مدرسة مخزنة مسبقاً
                     if (docCheck.exists) {
                         document.getElementById("schoolId").value = generateRandomSchoolId();
                         alert("حدث تشابه بسيط في الكود، تم توليد كود جديد تلقائياً. اضغط حفظ مجدداً.");
@@ -211,7 +215,7 @@
             oldSchoolId = sId;
             const schoolIdInput = document.getElementById("schoolId");
             schoolIdInput.value = sId;
-            schoolIdInput.disabled = true; // قفل الكود تماماً لمنع تعديله
+            schoolIdInput.disabled = true;
             
             document.getElementById("schoolName").value = sName;
             document.getElementById("schoolLat").value = sLat;
@@ -228,8 +232,8 @@
 
         function resetForm() {
             const schoolIdInput = document.getElementById("schoolId");
-            schoolIdInput.disabled = false; // إعادة السماح بالتعديل في حالة الإضافة الجديدة
-            schoolIdInput.value = generateRandomSchoolId(); // توليد كود جديد للمدرسة القادمة
+            schoolIdInput.disabled = false;
+            schoolIdInput.value = generateRandomSchoolId();
             
             document.getElementById("schoolName").value = "";
             document.getElementById("schoolLat").value = "";
@@ -256,4 +260,3 @@
     </script>
 </body>
 </html>
- 
