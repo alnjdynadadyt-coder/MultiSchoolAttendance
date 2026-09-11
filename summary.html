@@ -7,7 +7,9 @@
         body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .filter-box { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; align-items: center; flex-wrap: wrap; }
-        select, input { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; min-width: 200px; }
+        select, input, button { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; min-width: 180px; }
+        button { color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn-pdf { background: #343a40; min-width: 120px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ddd; padding: 12px; font-size: 14px; text-align: center; }
         th { background: #6c757d; color: white; }
@@ -17,11 +19,29 @@
         .badge-absent { color: #dc3545; font-weight: bold; }
         .badge-leave { color: #ffc107; font-weight: bold; }
         .back-link { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; }
+        
+        .report-header { text-align: center; margin-bottom: 20px; display: none; }
+        .report-header h2 { margin: 5px 0; color: #333; }
+        .report-header h3 { margin: 5px 0; color: #555; }
+
+        @media print {
+            .filter-box, .back-link, button { display: none !important; }
+            .report-header { display: block !important; }
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 0; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="report-header">
+        <h2 id="printSchoolName">اسم المدرسة</h2>
+        <h3>الملخص الشامل لحالة الموظفين (حضور، تأخير، غياب، إجازات)</h3>
+        <p>تاريخ التقرير: <span id="printDate"></span></p>
+        <hr style="border: 0.5px solid #ccc;">
+    </div>
+
     <h2 id="mainHeading" style="color: #333; text-align: center;">📊 الملخص الشامل لحالة الموظفين (حضور، تأخير، غياب، إجازات)</h2>
     
     <div class="filter-box">
@@ -38,6 +58,10 @@
         <div>
             <label style="display:block; font-size:12px; margin-bottom:3px; text-align:right;">بحث بالاسم أو الكود:</label>
             <input type="text" id="searchFilter" placeholder="أدخل اسم الموظف أو الكود..." onkeyup="filterSummary()">
+        </div>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:3px; text-align:visibility:hidden;">إجراءات:</label>
+            <button class="btn-pdf" onclick="window.print()">طباعة / PDF 🖨️</button>
         </div>
     </div>
 
@@ -78,7 +102,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // التقاط كود المدرسة من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get("school");
 
@@ -89,18 +112,21 @@
         backBtn.style.display = 'none';
     }
 
-    // جلب اسم المدرسة وتحديث العناوين
+    // ضبط تاريخ اليوم حسب توقيت بغداد
+    const baghdadDateStr = new Date().toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad', year: 'numeric', month: 'numeric', day: 'numeric' });
+    document.getElementById('printDate').innerText = baghdadDateStr;
+
     if (schoolId) {
         getDoc(doc(db, "schools", schoolId)).then((schoolDoc) => {
             if (schoolDoc.exists()) {
                 const schoolName = schoolDoc.data().name;
                 document.getElementById('pageTitle').innerText = `الملخص الشامل للحضور - ${schoolName}`;
                 document.getElementById('mainHeading').innerText = `📊 الملخص الشامل لحالة الموظفين - ${schoolName}`;
+                document.getElementById('printSchoolName').innerText = schoolName;
             }
         });
     }
 
-    // مراجع المجموعات الفرعية للمدرسة الحالية
     const getEmployeesRef = () => collection(db, "schools", schoolId, "employees");
     const getAttendanceRef = () => collection(db, "schools", schoolId, "attendance");
 
@@ -154,7 +180,6 @@
                 }
             });
 
-            // تحويل البيانات إلى مصفوفة وترتيبها تصاعدياً حسب الكود
             globalData = Object.values(summaryMap);
             globalData.sort((a, b) => Number(a.code) - Number(b.code));
 
