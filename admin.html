@@ -6,7 +6,7 @@
     <title>لوحة متابعة نشاط المدارس</title>
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 950px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
         h2, h3 { color: #333; }
         .card { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ddd; }
@@ -15,12 +15,21 @@
         .btn-nav { background-color: #6f42c1; width: 100%; font-size: 16px; font-weight: bold; margin-bottom: 20px; padding: 12px; }
         .btn-nav:hover { background-color: #5a329d; }
 
-        /* أزرار الفلترة والتصفية */
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; }
-        .filter-btn { background-color: #6c757d; flex: 1; }
-        .filter-btn.active { background-color: #007bff; font-weight: bold; }
+        /* شريط الإحصائيات والفلاتر */
+        .stats-box { display: flex; justify-content: space-around; background: #e9ecef; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; font-size: 14px; color: #333; text-align: center; gap: 5px; flex-wrap: wrap; }
+        .stats-box span { color: #007bff; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        .filter-bar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .filter-btn { background-color: #6c757d; flex: 1; min-width: 100px; padding: 8px; font-size: 13px; }
+        .filter-btn.active { background-color: #007bff; font-weight: bold; }
+        
+        .row-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .row-group select { flex: 1; min-width: 140px; width: auto; }
+        select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background-color: #fff; font-size: 14px; }
+
+        /* جدول البيانات والتجاوب */
+        .table-responsive { width: 100%; overflow-x: auto; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 700px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; }
         th { background-color: #343a40; color: white; }
         
@@ -40,26 +49,57 @@
     <div class="card">
         <h3>📊 جدول متابعة حالة المدارس والنشاط</h3>
         
-        <!-- أزرار الفلترة -->
-        <div class="filter-bar">
-            <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">جميع المدارس</button>
-            <button class="filter-btn" id="filterActive" onclick="setFilter('active')">🟢 النشطة فقط</button>
-            <button class="filter-btn" id="filterInactive" onclick="setFilter('inactive')">⚪ غير النشطة فقط</button>
+        <!-- لوحة الإحصائيات الديناميكية -->
+        <div class="stats-box">
+            <div>النتائج المطابقة: <span id="statTotal">0</span></div>
+            <div>🟢 النشطة: <span id="statActive">0</span></div>
+            <div>⚪ غير النشطة: <span id="statInactive">0</span></div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 20%;">الكود</th>
-                    <th style="width: 40%;">اسم المدرسة</th>
-                    <th style="width: 20%;">الحالة</th>
-                    <th style="width: 20%;">الموظفين 👥</th>
-                </tr>
-            </thead>
-            <tbody id="schoolsTableBody">
-                <tr><td colspan="4" style="color: #6c757d;">جاري جلب بيانات المدارس...</td></tr>
-            </tbody>
-        </table>
+        <!-- أزرار الفلترة للنشاط -->
+        <div class="filter-bar">
+            <button class="filter-btn active" id="filterAll" onclick="setActivityFilter('all')">جميع المدارس</button>
+            <button class="filter-btn" id="filterActive" onclick="setActivityFilter('active')">🟢 النشطة فقط</button>
+            <button class="filter-btn" id="filterInactive" onclick="setActivityFilter('inactive')">⚪ غير النشطة فقط</button>
+        </div>
+
+        <!-- فلاتر الفرز حسب التصنيفات -->
+        <div class="row-group" style="margin-bottom: 15px;">
+            <select id="filterLevel" class="select-filter" onchange="renderTable()">
+                <option value="">-- فرز حسب المرحلة الدراسية (الكل) --</option>
+                <option value="متوسطة">متوسطة</option>
+                <option value="اعدادية">اعدادية</option>
+                <option value="ثانوي">ثانوي</option>
+                <option value="متوسطة مسائية">متوسطة مسائية</option>
+                <option value="اعدادية مسائية">اعدادية مسائية</option>
+                <option value="ثانوية مسائية">ثانوية مسائية</option>
+            </select>
+            
+            <select id="filterGender" class="select-filter" onchange="renderTable()">
+                <option value="">-- فرز حسب النوع / الجنس (الكل) --</option>
+                <option value="بنين">بنين</option>
+                <option value="بنات">بنات</option>
+                <option value="مختلط">مختلط</option>
+            </select>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">الكود</th>
+                        <th style="width: 35%;">اسم المدرسة</th>
+                        <th style="width: 15%;">المرحلة</th>
+                        <th style="width: 10%;">النوع</th>
+                        <th style="width: 12%;">الحالة</th>
+                        <th style="width: 13%;">الموظفين 👥</th>
+                    </tr>
+                </thead>
+                <tbody id="schoolsTableBody">
+                    <tr><td colspan="6" style="color: #6c757d;">جاري جلب بيانات المدارس...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -82,7 +122,7 @@
     const db = firebase.firestore();
 
     let allSchoolsData = []; 
-    let currentFilter = 'all'; 
+    let currentActivityFilter = 'all'; 
 
     window.addEventListener("DOMContentLoaded", () => {
         loadSchoolsAndActivity();
@@ -90,13 +130,14 @@
 
     async function loadSchoolsAndActivity() {
         const tbody = document.getElementById("schoolsTableBody");
-        tbody.innerHTML = `<tr><td colspan="4">جاري التحميل...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6">جاري التحميل...</td></tr>`;
 
         try {
             const snapshot = await db.collection("schools").get();
             if (snapshot.empty) {
-                tbody.innerHTML = `<tr><td colspan="4">لا توجد مدارس مسجلة.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6">لا توجد مدارس مسجلة.</td></tr>`;
                 allSchoolsData = [];
+                renderTable();
                 return;
             }
 
@@ -105,6 +146,8 @@
                 let data = docSnap.data();
                 let sId = docSnap.id;
                 let sName = data.name || 'بدون اسم';
+                let sLevel = data.level || 'غير محدد';
+                let sGender = data.gender || 'غير محدد';
 
                 let empCount = 0;
                 try {
@@ -117,6 +160,8 @@
                 allSchoolsData.push({
                     id: sId,
                     name: sName,
+                    level: sLevel,
+                    gender: sGender,
                     empCount: empCount,
                     isActive: empCount > 0
                 });
@@ -124,12 +169,12 @@
 
             renderTable();
         } catch (error) {
-            tbody.innerHTML = `<tr><td colspan="4" style="color: red;">خطأ في جلب البيانات: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="color: red;">خطأ في جلب البيانات: ${error.message}</td></tr>`;
         }
     }
 
-    function setFilter(filterType) {
-        currentFilter = filterType;
+    function setActivityFilter(filterType) {
+        currentActivityFilter = filterType;
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
         if (filterType === 'all') document.getElementById('filterAll').classList.add('active');
         if (filterType === 'active') document.getElementById('filterActive').classList.add('active');
@@ -139,16 +184,39 @@
 
     function renderTable() {
         const tbody = document.getElementById("schoolsTableBody");
+        const selectedLevel = document.getElementById("filterLevel").value;
+        const selectedGender = document.getElementById("filterGender").value;
         
         let filteredData = allSchoolsData;
-        if (filterType = currentFilter === 'active') { // تصحيح بسيط للوضوح
-            filteredData = allSchoolsData.filter(s => s.isActive);
-        } else if (currentFilter === 'inactive') {
-            filteredData = allSchoolsData.filter(s => !s.isActive);
+
+        // تصفية حسب النشاط
+        if (currentActivityFilter === 'active') {
+            filteredData = filteredData.filter(s => s.isActive);
+        } else if (currentActivityFilter === 'inactive') {
+            filteredData = filteredData.filter(s => !s.isActive);
         }
 
-        if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="color: #6c757d;">لا توجد مدارس مطابقة لهذا التصنيف.</td></tr>`;
+        // تصفية حسب المرحلة الدراسية
+        if (selectedLevel) {
+            filteredData = filteredData.filter(s => s.level === selectedLevel);
+        }
+
+        // تصفية حسب النوع / الجنس
+        if (selectedGender) {
+            filteredData = filteredData.filter(s => s.gender === selectedGender);
+        }
+
+        // تحديث إحصائيات النتائج المطابقة للفرز الحالي
+        const totalFiltered = filteredData.length;
+        const activeFiltered = filteredData.filter(s => s.isActive).length;
+        const inactiveFiltered = totalFiltered - activeFiltered;
+
+        document.getElementById("statTotal").innerText = totalFiltered;
+        document.getElementById("statActive").innerText = activeFiltered;
+        document.getElementById("statInactive").innerText = inactiveFiltered;
+
+        if (totalFiltered === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="color: #6c757d;">لا توجد مدارس مطابقة لخيارات الفرز المحددة.</td></tr>`;
             return;
         }
 
@@ -164,6 +232,8 @@
                 <tr class="${rowClass}">
                     <td style="font-family: monospace;">${s.id}</td>
                     <td style="font-weight: bold; text-align: right; padding-right: 10px;">${s.name}</td>
+                    <td>${s.level}</td>
+                    <td>${s.gender}</td>
                     <td>${statusBadge}</td>
                     <td><b>${s.empCount}</b></td>
                 </tr>
