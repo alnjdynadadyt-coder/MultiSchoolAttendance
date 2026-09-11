@@ -43,6 +43,8 @@
         .img-modal-content { max-width: 90%; max-height: 90%; text-align: center; }
         .img-modal-content img { max-width: 100%; max-height: 80vh; border-radius: 8px; border: 3px solid white; }
     </style>
+    <!-- استدعاء الملف المركزي للقواعد -->
+    <script src="attendance-rules.js"></script>
 </head>
 <body>
 
@@ -99,7 +101,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -132,12 +134,15 @@
         backBtn.style.display = 'none';
     }
 
-    // جلب اسم المدرسة وتحديث الترويسة
+    let schoolShiftType = "morning_only"; // القيمة الافتراضية
+
+    // جلب اسم المدرسة ونوع الدوام وتحديث الترويسة
     if (schoolId) {
-        import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js").then(async ({ getDoc, doc }) => {
-            const schoolDoc = await getDoc(doc(db, "schools", schoolId));
+        getDoc(doc(db, "schools", schoolId)).then((schoolDoc) => {
             if (schoolDoc.exists()) {
-                const schoolName = schoolDoc.data().name;
+                const data = schoolDoc.data();
+                const schoolName = data.name;
+                schoolShiftType = data.shiftType || "morning_only";
                 document.getElementById('pageTitle').innerText = `التسجيل السريع - ${schoolName}`;
                 document.getElementById('mainHeading').innerText = `⚡ لوحة التسجيل السريع - ${schoolName}`;
             }
@@ -169,16 +174,6 @@
 
     updateDateDisplay(todayStr);
 
-    const getLimit = (type, timeInput) => {
-        const [h, m] = timeInput.split(':').map(Number);
-        const timeVal = h * 60 + m;
-        if (type === "حارس") return (timeVal < 12 * 60) ? "07:10" : "17:10";
-        if (type === "موظف") return (timeVal < 11 * 60) ? "07:10" : "12:10";
-        if (type === "إداري") return "07:40";
-        if (type === "مدرس") return "08:10";
-        return "08:10";
-    };
-
     let activeEmpForLeave = null;
     let selectedLeaveMethod = null;
     let attendanceMap = {};
@@ -202,20 +197,26 @@
 
         if (action === 'attendance') {
             if (!snap.empty) { alert("الموظف مسجل بالفعل لهذا التاريخ!"); return; }
-            let status = (timeInput > getLimit(type, timeInput)) ? "متأخر" : "حاضر";
+            
+            // استخدام محرك القواعد المركزي لفحص وقت الحضور
+            const evaluation = evaluateAttendanceRules(schoolShiftType, type, 'attendance', timeInput);
+            if (!evaluation.allowed) {
+                alert(evaluation.message);
+                return;
+            }
+            let status = evaluation.status || "حاضر";
+
             await addDoc(getAttendanceRef(), { empCode: code, name, status, time: timeInput, exitTime: "", date: selectedDateStr, day: selectedDayNameStr, reason: "", leaveImage: "" });
-            alert(`تم تسجيل حضور (${name}) لتاريخ ${selectedDateStr}`);
+            alert(`تم تسجيل حضور (${name}) لتاريخ ${selectedDateStr} - الحالة: ${status}`);
             loadEmployees();
         } else if (action === 'exit') {
             if (snap.empty) { alert("لم يتم تسجيل الحضور لهذا التاريخ بعد!"); return; }
             
-            if (["مدرس", "إداري", "موظف"].includes(type) && selectedDateStr === todayStr) {
-                const [h, m] = timeInput.split(':').map(Number);
-                const timeVal = h * 60 + m;
-                if (timeVal < 11 * 60) {
-                    alert("عذراً، لا يمكن تسجيل الانصراف قبل الساعة 11:00 صباحاً لهذه الفئة!");
-                    return;
-                }
+            // استخدام محرك القواعد المركزي لفحص وقت الانصراف
+            const evaluation = evaluateAttendanceRules(schoolShiftType, type, 'exit', timeInput);
+            if (!evaluation.allowed) {
+                alert(evaluation.message);
+                return;
             }
 
             await setDoc(doc(db, 'schools', schoolId, 'attendance', snap.docs[0].id), { exitTime: timeInput }, { merge: true });
