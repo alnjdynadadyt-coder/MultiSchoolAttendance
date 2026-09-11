@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة المشرف العام - متابعة وإدارة المدارس</title>
+    <title>لوحة المشرف العام - إدارة المدارس</title>
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
         .back-link { display: inline-block; margin-bottom: 20px; color: #007bff; text-decoration: none; font-weight: bold; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
         .back-link:hover { background: #d0e1fd; }
 
         h2, h3 { color: #333; }
-        
         .card { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ddd; }
         
         input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
@@ -24,20 +23,23 @@
         .btn-green { background-color: #4CAF50; }
         .btn-yellow { background-color: #ff9800; color: black; }
         .btn-purple { background-color: #6f42c1; width: 100%; margin-bottom: 10px; }
+        
+        /* أزرار الفلترة والتصفية */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+        .filter-btn { background-color: #6c757d; flex: 1; }
+        .filter-btn.active { background-color: #007bff; font-weight: bold; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; }
         th { background-color: #343a40; color: white; }
         
-        /* مؤشرات بصرية لصفوف الجدول */
-        .row-active { background-color: #f0fff4 !important; } /* أخضر فاتح للمدارس النشطة */
-        .row-inactive { background-color: #fff5f5 !important; } /* أحمر/رمادي فاتح للمدارس غير النشطة */
+        .row-active { background-color: #f0fff4 !important; }
+        .row-inactive { background-color: #fff5f5 !important; }
     </style>
 </head>
 <body>
 
-<!-- محتوى لوحة المشرف العام -->
-<div class="container" id="mainContainer">
+<div class="container">
     <a href="admin.html" class="back-link">← العودة لوحة الآدمن الرئيسية</a>
 
     <h2>👑 لوحة المشرف العام - متابعة وإدارة المدارس</h2>
@@ -58,15 +60,23 @@
         <button id="cancelEditBtn" style="width: 100%; background: #6c757d; display: none; margin-top: 5px;">إلغاء التعديل</button>
     </div>
 
-    <!-- جدول المتابعة المحدث -->
+    <!-- جدول المتابعة مع أزرار التصفية -->
     <div class="card">
         <h3>📊 جدول متابعة حالة المدارس والنشاط</h3>
+        
+        <!-- أزرار الفلترة الجديدة -->
+        <div class="filter-bar">
+            <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">جميع المدارس</button>
+            <button class="filter-btn" id="filterActive" onclick="setFilter('active')">🟢 النشطة فقط</button>
+            <button class="filter-btn" id="filterInactive" onclick="setFilter('inactive')">⚪ غير النشطة فقط</button>
+        </div>
+
         <table>
             <thead>
                 <tr>
                     <th style="width: 15%;">الكود</th>
                     <th style="width: 35%;">اسم المدرسة</th>
-                    <th style="width: 15%;">الحالة 🟢</th>
+                    <th style="width: 15%;">الحالة</th>
                     <th style="width: 15%;">الموظفين 👥</th>
                     <th style="width: 20%;">الإجراء</th>
                 </tr>
@@ -78,7 +88,7 @@
     </div>
 </div>
 
-<!-- مكتبات Firebase (نسخة Compat المتوافقة) -->
+<!-- مكتبات Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -96,16 +106,15 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // تم إزالة شروط الحماية، وتحميل البيانات مباشرة عند فتح الصفحة
-    window.addEventListener("DOMContentLoaded", () => {
-        if (!isEditing) {
-            document.getElementById("schoolId").value = generateRandomSchoolId();
-        }
-        loadSchoolsAndActivity();
-    });
-
+    let allSchoolsData = []; // تخزين البيانات مؤلداً للفلترة السريعة
+    let currentFilter = 'all'; // الفلتر الافتراضي
     let isEditing = false;
     let oldSchoolId = "";
+
+    window.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("schoolId").value = generateRandomSchoolId();
+        loadSchoolsAndActivity();
+    });
 
     function generateRandomSchoolId() {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -130,7 +139,6 @@
         );
     }
 
-    // جلب المدارس والاعتِماد على عدد الموظفين لتحديد الحالة (نشط / غير نشط)
     async function loadSchoolsAndActivity() {
         const tbody = document.getElementById("schoolsTableBody");
         tbody.innerHTML = `<tr><td colspan="5">جاري التحميل...</td></tr>`;
@@ -139,16 +147,16 @@
             const snapshot = await db.collection("schools").get();
             if (snapshot.empty) {
                 tbody.innerHTML = `<tr><td colspan="5">لا توجد مدارس مسجلة.</td></tr>`;
+                allSchoolsData = [];
                 return;
             }
 
-            let rows = "";
+            allSchoolsData = [];
             for (const docSnap of snapshot.docs) {
                 let data = docSnap.data();
                 let sId = docSnap.id;
                 let sName = data.name || 'بدون اسم';
 
-                // حساب عدد الموظفين الفعلي
                 let empCount = 0;
                 try {
                     const empSnap = await db.collection("schools").doc(sId).collection("employees").get();
@@ -157,30 +165,67 @@
                     empCount = 0;
                 }
 
-                // تحديد الحالة والمؤشر البصري بناءً على عدد الموظفين
-                let isActive = empCount > 0;
-                let statusBadge = isActive 
-                    ? `<span style="color: #28a745; font-weight: bold;">🟢 نشط</span>` 
-                    : `<span style="color: #6c757d; font-weight: bold;">⚪ غير نشط</span>`;
-                
-                let rowClass = isActive ? "row-active" : "row-inactive";
-
-                rows += `
-                    <tr class="${rowClass}">
-                        <td style="font-family: monospace;">${sId}</td>
-                        <td style="font-weight: bold; text-align: right; padding-right: 10px;">${sName}</td>
-                        <td>${statusBadge}</td>
-                        <td><b>${empCount}</b></td>
-                        <td>
-                            <button class="btn-yellow" onclick="editSchool('${sId}', '${sName.replace(/'/g, "\\'")}', '${data.lat || ""}', '${data.lon || ""}')">تعديل</button>
-                        </td>
-                    </tr>
-                `;
+                allSchoolsData.push({
+                    id: sId,
+                    name: sName,
+                    lat: data.lat || "",
+                    lon: data.lon || "",
+                    empCount: empCount,
+                    isActive: empCount > 0
+                });
             }
-            tbody.innerHTML = rows;
+
+            renderTable();
         } catch (error) {
             tbody.innerHTML = `<tr><td colspan="5" style="color: red;">خطأ في جلب البيانات: ${error.message}</td></tr>`;
         }
+    }
+
+    function setFilter(filterType) {
+        currentFilter = filterType;
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        if (filterType === 'all') document.getElementById('filterAll').classList.add('active');
+        if (filterType === 'active') document.getElementById('filterActive').classList.add('active');
+        if (filterType === 'inactive') document.getElementById('filterInactive').classList.add('active');
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("schoolsTableBody");
+        
+        let filteredData = allSchoolsData;
+        if (currentFilter === 'active') {
+            filteredData = allSchoolsData.filter(s => s.isActive);
+        } else if (currentFilter === 'inactive') {
+            filteredData = allSchoolsData.filter(s => !s.isActive);
+        }
+
+        if (filteredData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="color: #6c757d;">لا توجد مدارس مطابقة لهذا التصنيف.</td></tr>`;
+            return;
+        }
+
+        let rows = "";
+        filteredData.forEach(s => {
+            let statusBadge = s.isActive 
+                ? `<span style="color: #28a745; font-weight: bold;">🟢 نشط</span>` 
+                : `<span style="color: #6c757d; font-weight: bold;">⚪ غير نشط</span>`;
+            
+            let rowClass = s.isActive ? "row-active" : "row-inactive";
+
+            rows += `
+                <tr class="${rowClass}">
+                    <td style="font-family: monospace;">${s.id}</td>
+                    <td style="font-weight: bold; text-align: right; padding-right: 10px;">${s.name}</td>
+                    <td>${statusBadge}</td>
+                    <td><b>${s.empCount}</b></td>
+                    <td>
+                        <button class="btn-yellow" onclick="editSchool('${s.id}', '${s.name.replace(/'/g, "\\'")}', '${s.lat}', '${s.lon}')">تعديل</button>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = rows;
     }
 
     document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
