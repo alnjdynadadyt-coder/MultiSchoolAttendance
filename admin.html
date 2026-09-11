@@ -34,9 +34,12 @@
         
         <h3>المدارس المسجلة:</h3>
         <div id="schoolsList">جاري تحميل المدارس...</div>
+        
+        <br>
+        <a href="index.html" style="color: #007bff; text-decoration: none; font-weight: bold;">← الانتقال إلى بوابة دخول المدارس (index.html)</a>
     </div>
 
-    <!-- مكتبات Firebase -->
+    <!-- مكتبات Firebase (نسخة Compat المماثلة لبقية النظام) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -133,7 +136,7 @@
                         <div class="school-info"><b>${data.name}</b> <span style="color:#666; font-size:12px;">(${sId})</span></div>
                         <div class="school-actions">
                             <button class="btn-green" onclick="enterSchool('${sId}')">دخول</button>
-                            <button class="btn-blue" onclick="copySchoolLink('${sId}')">نسخ رابط البوابة</button>
+                            <button class="btn-blue" onclick="copySchoolLink('${sId}')">نسخ الرابط</button>
                             <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name}')">تعديل</button>
                             <button class="btn-red" onclick="deleteSchool('${sId}')">حذف</button>
                         </div>
@@ -148,7 +151,6 @@
         }
 
         window.copySchoolLink = function(schoolId) {
-            // توليد الرابط الفرعي المباشر للوحة تحكم المدرسة
             const currentUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
             const schoolLink = currentUrl + `dashboard.html?school=${schoolId}`;
             
