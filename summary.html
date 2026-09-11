@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title id="pageTitle">الملخص الشامل للحضور</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; align-items: center; flex-wrap: wrap; }
+        select, input { padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; min-width: 200px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 12px; font-size: 14px; text-align: center; }
+        th { background: #6c757d; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .badge-present { color: #28a745; font-weight: bold; }
+        .badge-late { color: #d9534f; font-weight: bold; }
+        .badge-absent { color: #dc3545; font-weight: bold; }
+        .badge-leave { color: #ffc107; font-weight: bold; }
+        .back-link { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 id="mainHeading" style="color: #333; text-align: center;">📊 الملخص الشامل لحالة الموظفين (حضور، تأخير، غياب، إجازات)</h2>
+    
+    <div class="filter-box">
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:3px; text-align:right;">تصنيف الموظف:</label>
+            <select id="typeFilter" onchange="filterSummary()">
+                <option value="الكل">جميع التصنيفات</option>
+                <option value="مدرس">مدرس</option>
+                <option value="إداري">إداري</option>
+                <option value="موظف">موظف</option>
+                <option value="حارس">حارس</option>
+            </select>
+        </div>
+        <div>
+            <label style="display:block; font-size:12px; margin-bottom:3px; text-align:right;">بحث بالاسم أو الكود:</label>
+            <input type="text" id="searchFilter" placeholder="أدخل اسم الموظف أو الكود..." onkeyup="filterSummary()">
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>الكود</th>
+                <th>اسم الموظف</th>
+                <th>التصنيف</th>
+                <th>إجمالي الحضور</th>
+                <th>إجمالي التأخير</th>
+                <th>إجمالي الغياب</th>
+                <th>إجمالي الإجازات</th>
+            </tr>
+        </thead>
+        <tbody id="summaryTableBody">
+            <tr><td colspan="7" style="color: #777;">جاري تحليل البيانات وإعداد الملخص...</td></tr>
+        </tbody>
+    </table>
+
+    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم الرئيسية</a>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // التقاط كود المدرسة من الرابط
+    const urlParams = new URLSearchParams(window.location.search);
+    const schoolId = urlParams.get("school");
+
+    const backBtn = document.getElementById('backDashboardBtn');
+    if (schoolId) {
+        backBtn.href = `dashboard.html?school=${schoolId}`;
+    } else {
+        backBtn.style.display = 'none';
+    }
+
+    // جلب اسم المدرسة وتحديث العناوين
+    if (schoolId) {
+        getDoc(doc(db, "schools", schoolId)).then((schoolDoc) => {
+            if (schoolDoc.exists()) {
+                const schoolName = schoolDoc.data().name;
+                document.getElementById('pageTitle').innerText = `الملخص الشامل للحضور - ${schoolName}`;
+                document.getElementById('mainHeading').innerText = `📊 الملخص الشامل لحالة الموظفين - ${schoolName}`;
+            }
+        });
+    }
+
+    // مراجع المجموعات الفرعية للمدرسة الحالية
+    const getEmployeesRef = () => collection(db, "schools", schoolId, "employees");
+    const getAttendanceRef = () => collection(db, "schools", schoolId, "attendance");
+
+    let globalData = [];
+
+    async function loadSummaryData() {
+        if (!schoolId) {
+            document.getElementById('summaryTableBody').innerHTML = `<tr><td colspan="7" style="color:red; font-weight:bold;">رابط غير صالح! لم يتم تحديد المدرسة.</td></tr>`;
+            return;
+        }
+
+        try {
+            const empSnap = await getDocs(getEmployeesRef());
+            let employeesMap = {};
+            empSnap.forEach(doc => {
+                employeesMap[doc.id] = { id: doc.id, ...doc.data() };
+            });
+
+            const attSnap = await getDocs(getAttendanceRef());
+            let attendanceRecords = [];
+            attSnap.forEach(doc => {
+                attendanceRecords.push(doc.data());
+            });
+
+            let summaryMap = {};
+            Object.keys(employeesMap).forEach(code => {
+                summaryMap[code] = {
+                    code: code,
+                    name: employeesMap[code].name || '---',
+                    type: employeesMap[code].type || 'مدرس',
+                    presentCount: 0,
+                    lateCount: 0,
+                    absentCount: 0,
+                    leaveCount: 0
+                };
+            });
+
+            attendanceRecords.forEach(att => {
+                let code = att.empCode;
+                if (summaryMap[code]) {
+                    let status = att.status || "";
+                    if (status === "حاضر") {
+                        summaryMap[code].presentCount++;
+                    } else if (status === "متأخر") {
+                        summaryMap[code].lateCount++;
+                    } else if (status === "مجاز" || status === "إجازة") {
+                        summaryMap[code].leaveCount++;
+                    } else if (status === "غائب") {
+                        summaryMap[code].absentCount++;
+                    }
+                }
+            });
+
+            // تحويل البيانات إلى مصفوفة وترتيبها تصاعدياً حسب الكود
+            globalData = Object.values(summaryMap);
+            globalData.sort((a, b) => Number(a.code) - Number(b.code));
+
+            renderTable(globalData);
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('summaryTableBody').innerHTML = `<tr><td colspan="7" style="color:red;">حدث خطأ أثناء جلب البيانات.</td></tr>`;
+        }
+    }
+
+    function renderTable(dataList) {
+        const tbody = document.getElementById('summaryTableBody');
+        if (dataList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="color:red;">لا توجد بيانات مطابقة!</td></tr>`;
+            return;
+        }
+
+        let html = "";
+        dataList.forEach(emp => {
+            html += `
+                <tr>
+                    <td>${emp.code}</td>
+                    <td style="font-weight:bold; text-align:right; padding-right:15px;">${emp.name}</td>
+                    <td>${emp.type}</td>
+                    <td class="badge-present">${emp.presentCount}</td>
+                    <td class="badge-late">${emp.lateCount}</td>
+                    <td class="badge-absent">${emp.absentCount}</td>
+                    <td class="badge-leave">${emp.leaveCount}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    window.filterSummary = () => {
+        const selectedType = document.getElementById('typeFilter').value;
+        const searchText = document.getElementById('searchFilter').value.trim().toLowerCase();
+
+        let filtered = globalData.filter(emp => {
+            let matchType = (selectedType === "الكل" || emp.type === selectedType);
+            let matchSearch = (emp.name.toLowerCase().includes(searchText) || emp.code.toLowerCase().includes(searchText));
+            return matchType && matchSearch;
+        });
+
+        renderTable(filtered);
+    };
+
+    loadSummaryData();
+</script>
+</body>
+</html>
