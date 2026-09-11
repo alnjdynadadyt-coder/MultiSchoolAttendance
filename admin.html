@@ -7,15 +7,18 @@
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
         .container { max-width: 650px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .row-group { display: flex; gap: 10px; }
+        .row-group input { width: 50%; }
         button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 5px; color: white; }
         button:hover { opacity: 0.9; }
         .btn-green { background-color: #4CAF50; }
         .btn-yellow { background-color: #ff9800; color: black; }
         .btn-red { background-color: #f44336; }
         .btn-blue { background-color: #007bff; }
+        .btn-purple { background-color: #6f42c1; }
         .school-card { background: #e9ecef; padding: 12px; margin-top: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-        .school-info { flex-grow: 1; margin-bottom: 5px; }
+        .school-info { flex-grow: 1; margin-bottom: 5px; font-size: 14px; }
         .school-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     </style>
 </head>
@@ -26,6 +29,12 @@
         
         <input type="text" id="schoolId" placeholder="كود المدرسة (حروف وأرقام مثل: najdeen123)">
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
+        
+        <div class="row-group">
+            <input type="number" step="any" id="schoolLat" placeholder="خط العرض (Latitude)">
+            <input type="number" step="any" id="schoolLon" placeholder="خط الطول (Longitude)">
+        </div>
+        <button type="button" class="btn-purple" onclick="getMyLocation()" style="width: 100%; margin-bottom: 10px;">📍 جلب إحداثيات موقعي الحالي تلقائياً</button>
 
         <button id="saveSchoolBtn" class="btn-green" style="width: 100%; font-size: 16px; margin-top: 5px;">إضافة المدرسة للقاعدة</button>
         <button id="cancelEditBtn" style="width: 100%; background: #6c757d; color: white; display: none; margin-top: 5px;">إلغاء التعديل</button>
@@ -39,7 +48,7 @@
         <a href="index.html" style="color: #007bff; text-decoration: none; font-weight: bold;">← الانتقال إلى بوابة دخول المدارس (index.html)</a>
     </div>
 
-    <!-- مكتبات Firebase (نسخة Compat المماثلة لبقية النظام) -->
+    <!-- مكتبات Firebase (نسخة Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -60,14 +69,43 @@
         let isEditing = false;
         let oldSchoolId = "";
 
+        // دالة جلب الموقع الجغرافي الحالي للمشرف عبر الـ GPS
+        window.getMyLocation = function() {
+            if (!navigator.geolocation) {
+                alert("المتصفح لا يدعم تحديد الموقع الجغرافي.");
+                return;
+            }
+            alert("جاري جلب إحداثيات موقعك الحالي، يرجى السماح للمتصفح بذلك...");
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    document.getElementById("schoolLat").value = position.coords.latitude;
+                    document.getElementById("schoolLon").value = position.coords.longitude;
+                    alert("تم تحديد الإحداثيات بنجاح!");
+                },
+                (error) => {
+                    alert("فشل في الحصول على الموقع: " + error.message);
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+
         document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
             const sId = document.getElementById("schoolId").value.trim();
             const sName = document.getElementById("schoolName").value.trim();
+            const sLat = parseFloat(document.getElementById("schoolLat").value);
+            const sLon = parseFloat(document.getElementById("schoolLon").value);
 
             if (!sId || !sName) {
-                alert("الرجاء ملء جميع الحقول!");
+                alert("الرجاء ملء كود المدرسة واسمها على الأقل!");
                 return;
             }
+
+            const schoolData = {
+                name: sName,
+                lat: isNaN(sLat) ? 0 : sLat,
+                lon: isNaN(sLon) ? 0 : sLon,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
 
             try {
                 if (isEditing) {
@@ -77,19 +115,17 @@
 
                         const docSnap = await oldDocRef.get();
                         if (docSnap.exists) {
-                            await newDocRef.set({
-                                name: sName,
-                                createdAt: docSnap.data().createdAt || firebase.firestore.FieldValue.serverTimestamp()
-                            });
+                            await newDocRef.set(schoolData);
                             await oldDocRef.delete();
                         } else {
-                            await newDocRef.set({
-                                name: sName,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
+                            await newDocRef.set(schoolData);
                         }
                     } else {
-                        await db.collection("schools").doc(sId).update({ name: sName });
+                        await db.collection("schools").doc(sId).update({
+                            name: sName,
+                            lat: schoolData.lat,
+                            lon: schoolData.lon
+                        });
                     }
 
                     alert("تم تعديل بيانات المدرسة بنجاح!");
@@ -103,12 +139,8 @@
                         return;
                     }
 
-                    await schoolRef.set({
-                        name: sName,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    alert("تم إضافة المدرسة بنجاح!");
+                    await schoolRef.set(schoolData);
+                    alert("تم إضافة المدرسة وإحداثياتها بنجاح!");
                     resetForm();
                     loadSchools();
                 }
@@ -129,15 +161,19 @@
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
                     const sId = doc.id;
+                    const coordsText = (data.lat && data.lon) ? `(${data.lat.toFixed(4)}, ${data.lon.toFixed(4)})` : "(بدون إحداثيات)";
                     
                     const card = document.createElement("div");
                     card.className = "school-card";
                     card.innerHTML = `
-                        <div class="school-info"><b>${data.name}</b> <span style="color:#666; font-size:12px;">(${sId})</span></div>
+                        <div class="school-info">
+                            <b>${data.name}</b> <span style="color:#666; font-size:12px;">(${sId})</span><br>
+                            <span style="color: #007bff; font-size: 11px;">📍 ${coordsText}</span>
+                        </div>
                         <div class="school-actions">
                             <button class="btn-green" onclick="enterSchool('${sId}')">دخول</button>
                             <button class="btn-blue" onclick="copySchoolLink('${sId}')">نسخ الرابط</button>
-                            <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name}')">تعديل</button>
+                            <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name}', '${data.lat || ""}', '${data.lon || ""}')">تعديل</button>
                             <button class="btn-red" onclick="deleteSchool('${sId}')">حذف</button>
                         </div>
                     `;
@@ -152,19 +188,21 @@
 
         window.copySchoolLink = function(schoolId) {
             const currentUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-            const schoolLink = currentUrl + `dashboard.html?school=${schoolId}`;
+            const schoolLink = currentUrl + `employee.html?school=${schoolId}`;
             
             navigator.clipboard.writeText(schoolLink).then(() => {
-                alert("تم نسخ رابط المدرسة بنجاح:\n" + schoolLink);
+                alert("تم نسخ رابط التسجيل الخارجي للمدرسة بنجاح:\n" + schoolLink);
             }).catch(err => {
                 alert("فشل نسخ الرابط: " + err);
             });
         }
 
-        window.editSchool = function(sId, sName) {
+        window.editSchool = function(sId, sName, sLat, sLon) {
             oldSchoolId = sId;
             document.getElementById("schoolId").value = sId;
             document.getElementById("schoolName").value = sName;
+            document.getElementById("schoolLat").value = sLat;
+            document.getElementById("schoolLon").value = sLon;
             
             document.getElementById("formTitle").innerText = "تعديل بيانات المدرسة: " + sId;
             document.getElementById("saveSchoolBtn").innerText = "حفظ التعديلات";
@@ -178,6 +216,8 @@
         function resetForm() {
             document.getElementById("schoolId").value = "";
             document.getElementById("schoolName").value = "";
+            document.getElementById("schoolLat").value = "";
+            document.getElementById("schoolLon").value = "";
             document.getElementById("formTitle").innerText = "لوحة المشرف العام: إضافة مدرسة جديدة";
             document.getElementById("saveSchoolBtn").innerText = "إضافة المدرسة للقاعدة";
             document.getElementById("cancelEditBtn").style.display = "none";
