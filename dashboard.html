@@ -12,7 +12,6 @@
         .btn-manual { background: #007bff; }
         .btn-emps { background: #6c757d; }
         .btn-reports { background: #ffc107; color: #333; }
-        .back-btn { background: #6c757d; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; display: inline-block; margin-bottom: 15px; font-size: 14px; }
         
         .external-box { margin-top: 25px; background: #e8f4fd; padding: 15px; border-radius: 8px; border: 1px solid #b8daff; text-align: center; }
         .external-box input { width: 55%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; direction: ltr; text-align: left; font-size: 13px; }
@@ -23,9 +22,7 @@
 <body>
 
 <div class="container">
-    <div id="backButtonContainer" style="text-align: right; display: none;">
-        <a id="backAdminBtn" href="admin.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
-    </div>
+    <!-- تم حذف زر العودة بالكامل من هنا لضمان عدم ظهوره نهائياً -->
 
     <h2 style="color:#007bff; margin-top: 5px;">نظام إدارة الحضور والتقارير</h2>
     <h3 id="schoolTitle">جاري تحميل اسم المدرسة...</h3>
@@ -69,42 +66,6 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
-    let fromParam = urlParams.get('from');
-    let adminParamVal = urlParams.get('admin');
-
-    // تحديد ما إذا كان الدخول إدارياً من الرابط الحالي
-    let isSuperAdminOrAdmin = (fromParam === 'admin' || adminParamVal === 'true' || fromParam === 'super_admin');
-
-    if (isSuperAdminOrAdmin) {
-        // حفظ حالة المشرف في الذاكرة المؤقتة لكي لا تضيع عند التنقل بين الأزرار الفرعية
-        localStorage.setItem("isAdminMode", "true");
-        localStorage.setItem("adminFrom", fromParam || (adminParamVal === 'true' ? 'admin' : ''));
-    } else {
-        // التحقق مما إذا كانت الذاكرة تخبرنا أن الدخول سابقاً كان إدارياً أو مدير مدرسة
-        // (إذا دخل المدير برابطه الخاص، سنجبر الذاكرة على إلغاء وضع المشرف)
-        if (schoolId && urlParams.has('school') && !fromParam && !adminParamVal) {
-            // هذا دخول مباشر برابط المدرسة الخارجي
-            localStorage.removeItem("isAdminMode");
-            localStorage.removeItem("adminFrom");
-        }
-    }
-
-    // الفحص النهائي من الذاكرة والرابط معاً
-    const storedAdminMode = localStorage.getItem("isAdminMode") === "true";
-    const storedFrom = localStorage.getItem("adminFrom");
-
-    if (isSuperAdminOrAdmin || storedAdminMode) {
-        document.getElementById('backButtonContainer').style.display = 'block';
-        if (fromParam === 'super_admin' || storedFrom === 'super_admin') {
-            document.getElementById('backAdminBtn').href = "super_admin.html";
-            document.getElementById('backAdminBtn').innerText = "⬅ العودة لوحة المساعد";
-        } else {
-            document.getElementById('backAdminBtn').href = "admin.html";
-            document.getElementById('backAdminBtn').innerText = "⬅ العودة لقائمة المدارس";
-        }
-    } else {
-        document.getElementById('backButtonContainer').style.display = 'none';
-    }
 
     if (!schoolId) {
         schoolId = localStorage.getItem("currentSchoolId");
@@ -124,16 +85,14 @@
             }
         });
 
-        // تمرير باراميتر المشرف في الروابط الفرعية لكي تحافظ على ظهور زر العودة عند العودة للوحة
-        const subAdminParam = (isSuperAdminOrAdmin || storedAdminMode) ? `&from=${fromParam || storedFrom || 'admin'}` : '';
-        
-        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}${subAdminParam}`;
-        document.getElementById('btnManual').href = `manual.html?school=${schoolId}${subAdminParam}`;
-        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}${subAdminParam}`;
-        document.getElementById('btnReports').href = `reports.html?school=${schoolId}${subAdminParam}`;
-        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}${subAdminParam}`;
-        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}${subAdminParam}`;
-        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}${subAdminParam}`;
+        // ربط الأزرار الفرعية بشكل مباشر بمعرف المدرسة فقط دون أي تعقيد
+        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}`;
+        document.getElementById('btnManual').href = `manual.html?school=${schoolId}`;
+        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}`;
+        document.getElementById('btnReports').href = `reports.html?school=${schoolId}`;
+        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}`;
+        document.getElementById('btnAdvReports').href=`advanced_reports.html?school=${schoolId}`;
+        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}`;
     }
 
     let currentBase = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
