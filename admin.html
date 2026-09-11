@@ -6,16 +6,17 @@
     <title>منصة إدارة المدارس - لوحة المشرف العام</title>
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 650px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 5px; color: white; }
         button:hover { opacity: 0.9; }
         .btn-green { background-color: #4CAF50; }
         .btn-yellow { background-color: #ff9800; color: black; }
         .btn-red { background-color: #f44336; }
-        .school-card { background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .btn-blue { background-color: #007bff; }
+        .school-card { background: #e9ecef; padding: 12px; margin-top: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
         .school-info { flex-grow: 1; margin-bottom: 5px; }
-        .school-actions { display: flex; gap: 5px; }
+        .school-actions { display: flex; gap: 5px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -54,7 +55,7 @@
         const db = firebase.firestore();
 
         let isEditing = false;
-        let oldSchoolId = ""; // لتخزين الكود القديم عند التعديل
+        let oldSchoolId = "";
 
         document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
             const sId = document.getElementById("schoolId").value.trim();
@@ -67,7 +68,6 @@
 
             try {
                 if (isEditing) {
-                    // إذا تم تغيير الكود، نقوم بإنشاء سجل جديد ونقل البيانات وحذف القديم
                     if (sId !== oldSchoolId) {
                         const oldDocRef = db.collection("schools").doc(oldSchoolId);
                         const newDocRef = db.collection("schools").doc(sId);
@@ -86,7 +86,6 @@
                             });
                         }
                     } else {
-                        // إذا بقي الكود كما هو، نقوم بتحديث الاسم فقط
                         await db.collection("schools").doc(sId).update({ name: sName });
                     }
 
@@ -94,7 +93,6 @@
                     resetForm();
                     loadSchools();
                 } else {
-                    // إضافة مدرسة جديدة
                     const schoolRef = db.collection("schools").doc(sId);
                     const docCheck = await schoolRef.get();
                     if (docCheck.exists) {
@@ -135,6 +133,7 @@
                         <div class="school-info"><b>${data.name}</b> <span style="color:#666; font-size:12px;">(${sId})</span></div>
                         <div class="school-actions">
                             <button class="btn-green" onclick="enterSchool('${sId}')">دخول</button>
+                            <button class="btn-blue" onclick="copySchoolLink('${sId}')">نسخ رابط البوابة</button>
                             <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name}')">تعديل</button>
                             <button class="btn-red" onclick="deleteSchool('${sId}')">حذف</button>
                         </div>
@@ -145,14 +144,24 @@
         }
 
         window.enterSchool = function(schoolId) {
-            localStorage.setItem("currentSchoolId", schoolId);
-            window.location.href = "dashboard.html";
+            window.location.href = `dashboard.html?school=${schoolId}`;
+        }
+
+        window.copySchoolLink = function(schoolId) {
+            // توليد الرابط الفرعي المباشر للوحة تحكم المدرسة
+            const currentUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const schoolLink = currentUrl + `dashboard.html?school=${schoolId}`;
+            
+            navigator.clipboard.writeText(schoolLink).then(() => {
+                alert("تم نسخ رابط المدرسة بنجاح:\n" + schoolLink);
+            }).catch(err => {
+                alert("فشل نسخ الرابط: " + err);
+            });
         }
 
         window.editSchool = function(sId, sName) {
-            oldSchoolId = sId; // حفظ الكود القديم
+            oldSchoolId = sId;
             document.getElementById("schoolId").value = sId;
-            document.getElementById("schoolId").disabled = false; // السماح بتعديل الكود بحرية
             document.getElementById("schoolName").value = sName;
             
             document.getElementById("formTitle").innerText = "تعديل بيانات المدرسة: " + sId;
@@ -166,7 +175,6 @@
 
         function resetForm() {
             document.getElementById("schoolId").value = "";
-            document.getElementById("schoolId").disabled = false;
             document.getElementById("schoolName").value = "";
             document.getElementById("formTitle").innerText = "لوحة المشرف العام: إضافة مدرسة جديدة";
             document.getElementById("saveSchoolBtn").innerText = "إضافة المدرسة للقاعدة";
