@@ -25,7 +25,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
@@ -49,21 +49,66 @@
             return;
         }
 
+        errorMsg.style.color = "#007bff";
         errorMsg.innerText = "جاري التحقق من المدرسة...";
 
         try {
-            // التحقق مما إذا كانت المدرسة موجودة في قاعدة البيانات
             const schoolRef = doc(db, "schools", code);
             const schoolSnap = await getDoc(schoolRef);
 
-            if (schoolSnap.exists()) {
-                // التوجه إلى لوحة التحكم الخاصة بالمدرسة مع الرابط الفرعي
-                window.location.href = `dashboard.html?school=${code}`;
-            } else {
+            if (!schoolSnap.exists()) {
+                errorMsg.style.color = "red";
                 errorMsg.innerText = "كود المدرسة غير صحيح أو غير موجود!";
+                return;
             }
+
+            const schoolData = schoolSnap.data();
+
+            // فحص هل الموقع الجغرافي مثبت مسبقاً؟ إذا لم يكن موجوداً، نقوم بطلبه لأول مرة فقط
+            if (!schoolData.lat || !schoolData.lng) {
+                errorMsg.innerText = "يرجى السماح بتحديد الموقع الجغرافي (GPS) لتثبيت موقع المدرسة لأول مرة...";
+                
+                if (!navigator.geolocation) {
+                    errorMsg.style.color = "red";
+                    errorMsg.innerText = "متصفحك لا يدعم تحديد الموقع الجغرافي.";
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        try {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+
+                            // حفظ الإحداثيات تلقائياً في صفحة أو وثيقة الأدمن/المدرسة في فايربيس
+                            await setDoc(schoolRef, { lat: lat, lng: lng }, { merge: true });
+
+                            errorMsg.style.color = "green";
+                            errorMsg.innerText = "تم تثبيت موقع المدرسة بنجاح! جاري الدخول...";
+                            
+                            setTimeout(() => {
+                                window.location.href = `dashboard.html?school=${code}`;
+                            }, 1000);
+                        } catch (err) {
+                            console.error(err);
+                            errorMsg.style.color = "red";
+                            errorMsg.innerText = "فشل حفظ الإحداثيات في قاعدة البيانات.";
+                        }
+                    },
+                    (error) => {
+                        errorMsg.style.color = "red";
+                        errorMsg.innerText = "يجب الموافقة على إذن الموقع الجغرافي (GPS) لمرة واحدة لدخول لوحة التحكم.";
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                // إذا كانت الإحداثيات مسجلة مسبقاً، ادخل مباشرة بدون طلب إذن
+                window.location.href = `dashboard.html?school=${code}`;
+            }
+
         } catch (e) {
             console.error(e);
+            errorMsg.style.color = "red";
             errorMsg.innerText = "حدث خطأ في الاتصال بقاعدة البيانات.";
         }
     };
