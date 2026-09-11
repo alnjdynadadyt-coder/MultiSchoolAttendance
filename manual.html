@@ -6,19 +6,17 @@
     <style>
         body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
         .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 8px; align-items: center; }
         input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 14px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: auto; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
         th { background-color: #007bff; color: white; }
         
-        /* تخصيص وتوسيع مساحة الاسم وتصغير حقل الانصراف */
         th:nth-child(1), td:nth-child(1) { width: 20%; min-width: 110px; font-weight: bold; }
-        th:nth-child(8), td:nth-child(8) { width: 130px; }
+        th:nth-child(8), td:nth-child(8) { width: 100px; }
         td:nth-child(5) input[type="time"] { width: 85px; padding: 5px; font-size: 13px; text-align: center; }
 
-        .btn-edit { background: #ffc107; color: #333; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; margin-left: 3px; }
-        .btn-del { background: #ff4d4d; color: white; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        .btn-del { background: #ff4d4d; color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-weight: bold; }
         .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
     </style>
 </head>
@@ -37,8 +35,8 @@
             <option>مجاز</option>
             <option>غائب</option>
         </select>
-        <input type="text" id="reason" placeholder="سبب الغياب أو الملاحظة">
         <input type="time" id="customTime">
+        <input type="text" id="reason" placeholder="سبب الغياب أو الملاحظة">
         <button id="actionBtn" onclick="saveAttendance()" style="background:#007bff; color:white; font-weight:bold;">تسجيل يدوي</button>
     </div>
 
@@ -64,7 +62,6 @@
         measurementId: "G-791M6F7WMC"
     }));
 
-    // التقاط معرف المدرسة من الرابط أو التخزين المحلي (نفس نظام مشروعك المتعدد)
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
 
@@ -86,8 +83,6 @@
 
     document.getElementById('dateSelector').value = baghdadDate;
     document.getElementById('customTime').value = baghdadTime;
-
-    let editingId = null;
 
     const getLimit = (type, dayIndex, timeInput) => {
         const [h, m] = timeInput.split(':').map(Number);
@@ -115,7 +110,6 @@
                     <td>${data.status}</td>
                     <td>${data.reason || ''}</td>
                     <td>
-                        <button class="btn-edit" onclick="editAtt('${d.id}', '${data.empCode}', '${data.status}', '${data.time}', '${data.reason || ''}')">تعديل</button>
                         <button class="btn-del" onclick="deleteAtt('${d.id}')">حذف</button>
                     </td>
                 </tr>`;
@@ -128,60 +122,37 @@
         await setDoc(doc(db, "schools", schoolId, "attendance", id), { exitTime: time }, { merge: true }); 
     };
 
-    window.editAtt = (id, code, status, time, reason) => {
-        editingId = id;
-        document.getElementById('empCode').value = code;
-        document.getElementById('status').value = status;
-        document.getElementById('reason').value = reason;
-        if(time && time !== '-') {
-            document.getElementById('customTime').value = time;
-        }
-        const btn = document.getElementById('actionBtn');
-        btn.innerText = "تحديث البيانات";
-        btn.style.background = "#ffc107";
-        btn.style.color = "#333";
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
     window.saveAttendance = async () => {
-        const code = document.getElementById('empCode').value.trim();
-        const date = document.getElementById('dateSelector').value;
-        const statusRaw = document.getElementById('status').value;
-        const timeInput = document.getElementById('customTime').value;
-        const reason = document.getElementById('reason').value;
-        const dayIndex = new Date(date).getDay();
+        try {
+            const code = document.getElementById('empCode').value.trim();
+            const date = document.getElementById('dateSelector').value;
+            const statusRaw = document.getElementById('status').value;
+            const timeInput = document.getElementById('customTime').value;
+            const reason = document.getElementById('reason').value;
+            const dayIndex = new Date(date).getDay();
 
-        if(!code) { alert("يرجى إدخال كود الموظف"); return; }
+            if(!code) { alert("يرجى إدخال كود الموظف"); return; }
 
-        const empSnap = await getDoc(doc(db, "schools", schoolId, "employees", code));
-        if (!empSnap.exists()) { alert("الكود غير موجود في قائمة موظفي هذه المدرسة!"); return; }
-        
-        const empData = empSnap.data();
-        let status = statusRaw;
-        
-        // إعادة احتساب الحالة تلقائياً بناءً على الوقت إذا كانت الحالة حاضراً أو متأخراً
-        if (status === "حاضر" || status === "متأخر") {
-            status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
-        }
+            const empSnap = await getDoc(doc(db, "schools", schoolId, "employees", code));
+            if (!empSnap.exists()) { alert("الكود (" + code + ") غير موجود في قائمة موظفي هذه المدرسة!"); return; }
+            
+            const empData = empSnap.data();
+            let status = statusRaw;
+            
+            if (status === "حاضر" || status === "متأخر") {
+                status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
+            }
 
-        const attendanceRef = collection(db, "schools", schoolId, "attendance");
+            const attendanceRef = collection(db, "schools", schoolId, "attendance");
 
-        if (editingId) {
-            // تحديث السجل الموجود داخل مسار المدرسة الصحيح
-            await setDoc(doc(db, "schools", schoolId, "attendance", editingId), {
-                empCode: code,
-                name: empData.name,
-                status,
-                time: (status === "غائب" || status === "مجاز") ? "-" : timeInput,
-                reason: reason
-            }, { merge: true });
-
-            alert("تم تحديث البيانات بنجاح");
-            resetForm();
-        } else {
-            // إضافة سجل جديد
+            // التحقق مما إذا كان الموظف مسجلاً مسبقاً في نفس اليوم
             const q = query(attendanceRef, where("empCode", "==", code), where("date", "==", date));
-            if (!(await getDocs(q)).empty) { alert("الموظف مسجل بالفعل لهذا اليوم!"); return; }
+            const existingDocs = await getDocs(q);
+            
+            if (!existingDocs.empty) { 
+                alert("الموظف مسجل بالفعل لهذا اليوم! يجدر بك حذف السجل القديم أولاً إذا أردت إعادة تسجيله بوقت مختلف."); 
+                return; 
+            }
             
             const targetDateObj = new Date(date);
             const formattedDayName = targetDateObj.toLocaleDateString('ar-EG', {weekday: 'long', timeZone: 'Asia/Baghdad'});
@@ -198,22 +169,17 @@
             });
             
             alert("تم التسجيل بنجاح كـ: " + status);
-            resetForm();
+            document.getElementById('empCode').value = '';
+            document.getElementById('reason').value = '';
+
+        } catch (error) {
+            console.error("خطأ في حفظ البيانات:", error);
+            alert("حدث خطأ أثناء الحفظ، تحقق من وحدة التحكم (Console)");
         }
     };
 
-    function resetForm() {
-        editingId = null;
-        document.getElementById('empCode').value = '';
-        document.getElementById('reason').value = '';
-        const btn = document.getElementById('actionBtn');
-        btn.innerText = "تسجيل يدوي";
-        btn.style.background = "#007bff";
-        btn.style.color = "white";
-    }
-
     window.deleteAtt = (id) => {
-        if(confirm("هل أنت متأكد من حذف هذا السجل؟")) {
+        if(confirm("هل أنت متأكد من حذف هذا السجل؟ (سيُتيح لك ذلك إعادة تسجيل الموظف من جديد)")) {
             deleteDoc(doc(db, "schools", schoolId, "attendance", id));
         }
     };
