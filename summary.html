@@ -18,7 +18,9 @@
         .badge-late { color: #d9534f; font-weight: bold; }
         .badge-absent { color: #dc3545; font-weight: bold; }
         .badge-leave { color: #ffc107; font-weight: bold; }
-        .back-link { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; }
+        
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
+        .back-link:hover { background: #d0e1fd; }
         
         .report-header { text-align: center; margin-bottom: 20px; display: none; }
         .report-header h2 { margin: 5px 0; color: #333; }
@@ -35,6 +37,9 @@
 <body>
 
 <div class="container">
+    <!-- زر العودة في أعلى الصفحة مع دعم صلاحيات المشرف -->
+    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم</a>
+
     <div class="report-header">
         <h2 id="printSchoolName">اسم المدرسة</h2>
         <h3>الملخص الشامل لحالة الموظفين (حضور، تأخير، غياب، إجازات)</h3>
@@ -60,7 +65,7 @@
             <input type="text" id="searchFilter" placeholder="أدخل اسم الموظف أو الكود..." onkeyup="filterSummary()">
         </div>
         <div>
-            <label style="display:block; font-size:12px; margin-bottom:3px; text-align:visibility:hidden;">إجراءات:</label>
+            <label style="display:block; font-size:12px; margin-bottom:3px; visibility:hidden;">إجراءات:</label>
             <button class="btn-pdf" onclick="window.print()">طباعة / PDF 🖨️</button>
         </div>
     </div>
@@ -81,8 +86,6 @@
             <tr><td colspan="7" style="color: #777;">جاري تحليل البيانات وإعداد الملخص...</td></tr>
         </tbody>
     </table>
-
-    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم الرئيسية</a>
 </div>
 
 <script type="module">
@@ -104,10 +107,17 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get("school");
+    const isAdmin = urlParams.get('admin') === 'true';
 
+    // ضبط رابط زر العودة في أعلى الصفحة مع التحقق من صلاحيات المشرف
     const backBtn = document.getElementById('backDashboardBtn');
     if (schoolId) {
-        backBtn.href = `dashboard.html?school=${schoolId}`;
+        let backUrl = `dashboard.html?school=${schoolId}`;
+        if (isAdmin) {
+            backUrl += `&admin=true`;
+            backBtn.innerText = "← العودة لوحة التحكم (بصلاحية المشرف)";
+        }
+        backBtn.href = backUrl;
     } else {
         backBtn.style.display = 'none';
     }
