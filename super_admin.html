@@ -11,10 +11,10 @@
         h2, h3 { color: #333; }
         .card { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ddd; }
         
-        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background-color: #fff; }
         input:disabled { background-color: #e9ecef; cursor: not-allowed; }
         .row-group { display: flex; gap: 10px; }
-        .row-group input { width: 50%; }
+        .row-group input, .row-group select { width: 50%; }
 
         button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; color: white; }
         .btn-green { background-color: #4CAF50; }
@@ -24,9 +24,8 @@
         .btn-nav { background-color: #6f42c1; width: 100%; font-size: 16px; font-weight: bold; margin-bottom: 20px; padding: 12px; }
         .btn-nav:hover { background-color: #5a329d; }
         
-        /* أزرار الفلترة والتصفية */
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; }
-        .filter-btn { background-color: #6c757d; flex: 1; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .filter-btn { background-color: #6c757d; flex: 1; min-width: 120px; }
         .filter-btn.active { background-color: #007bff; font-weight: bold; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
@@ -40,7 +39,6 @@
 <body>
 
 <div class="container">
-    <!-- زر الانتقال مخفي افتراضياً ولا يظهر إلا إذا تم القدوم من لوحة الأدمن -->
     <button id="navBackBtn" class="btn btn-nav" onclick="location.href='admin.html'" style="display: none;">📌 الانتقال إلى لوحة متابعة نشاط المدارس</button>
 
     <h2>🤝 لوحة المساعد - إدارة المدارس</h2>
@@ -51,6 +49,23 @@
         <input type="text" id="schoolId" placeholder="كود المدرسة (يُولّد تلقائياً)" readonly>
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
         
+        <div class="row-group">
+            <select id="schoolLevel">
+                <option value="">-- اختر المرحلة الدراسية --</option>
+                <option value="متوسطة">متوسطة</option>
+                <option value="اعدادية">اعدادية</option>
+                <option value="ثانوي">ثانوي</option>
+                <option value="متوسطة مسائية">متوسطة مسائية</option>
+                <option value="اعدادية مسائية">اعدادية مسائية</option>
+                <option value="ثانوية مسائية">ثانوية مسائية</option>
+            </select>
+            <select id="schoolGender">
+                <option value="">-- اختر الجنس --</option>
+                <option value="بنين">بنين</option>
+                <option value="بنات">بنات</option>
+            </select>
+        </div>
+
         <div class="row-group">
             <input type="number" step="any" id="schoolLat" placeholder="خط العرض (Latitude)">
             <input type="number" step="any" id="schoolLon" placeholder="خط الطول (Longitude)">
@@ -65,7 +80,6 @@
     <div class="card">
         <h3>📊 جدول متابعة حالة المدارس والنشاط</h3>
         
-        <!-- أزرار الفلترة -->
         <div class="filter-bar">
             <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">جميع المدارس</button>
             <button class="filter-btn" id="filterActive" onclick="setFilter('active')">🟢 النشطة فقط</button>
@@ -75,21 +89,22 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 15%;">الكود</th>
-                    <th style="width: 30%;">اسم المدرسة</th>
-                    <th style="width: 15%;">الحالة</th>
-                    <th style="width: 15%;">الموظفين 👥</th>
-                    <th style="width: 25%;">الإجراء</th>
+                    <th style="width: 12%;">الكود</th>
+                    <th style="width: 25%;">اسم المدرسة</th>
+                    <th style="width: 15%;">المرحلة</th>
+                    <th style="width: 10%;">الجنس</th>
+                    <th style="width: 10%;">الحالة</th>
+                    <th style="width: 10%;">الموظفين 👥</th>
+                    <th style="width: 18%;">الإجراء</th>
                 </tr>
             </thead>
             <tbody id="schoolsTableBody">
-                <tr><td colspan="5" style="color: #6c757d;">جاري جلب بيانات المدارس...</td></tr>
+                <tr><td colspan="7" style="color: #6c757d;">جاري جلب بيانات المدارس...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- مكتبات Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -110,15 +125,12 @@
     let allSchoolsData = []; 
     let currentFilter = 'all'; 
     let isEditing = false;
-    let oldSchoolId = "";
 
     window.addEventListener("DOMContentLoaded", () => {
-        // التحقق من معامل الأمان في الرابط لإظهار زر العودة للأدمن فقط
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('from') === 'admin') {
             document.getElementById("navBackBtn").style.display = "block";
         }
-
         document.getElementById("schoolId").value = generateRandomSchoolId();
         loadSchoolsAndActivity();
     });
@@ -148,12 +160,12 @@
 
     async function loadSchoolsAndActivity() {
         const tbody = document.getElementById("schoolsTableBody");
-        tbody.innerHTML = `<tr><td colspan="5">جاري التحميل...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7">جاري التحميل...</td></tr>`;
 
         try {
             const snapshot = await db.collection("schools").get();
             if (snapshot.empty) {
-                tbody.innerHTML = `<tr><td colspan="5">لا توجد مدارس مسجلة.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7">لا توجد مدارس مسجلة.</td></tr>`;
                 allSchoolsData = [];
                 return;
             }
@@ -163,6 +175,8 @@
                 let data = docSnap.data();
                 let sId = docSnap.id;
                 let sName = data.name || 'بدون اسم';
+                let sLevel = data.level || 'غير محدد';
+                let sGender = data.gender || 'غير محدد';
 
                 let empCount = 0;
                 try {
@@ -175,6 +189,8 @@
                 allSchoolsData.push({
                     id: sId,
                     name: sName,
+                    level: sLevel,
+                    gender: sGender,
                     lat: data.lat || "",
                     lon: data.lon || "",
                     empCount: empCount,
@@ -184,7 +200,7 @@
 
             renderTable();
         } catch (error) {
-            tbody.innerHTML = `<tr><td colspan="5" style="color: red;">خطأ في جلب البيانات: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="color: red;">خطأ في جلب البيانات: ${error.message}</td></tr>`;
         }
     }
 
@@ -208,7 +224,7 @@
         }
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="color: #6c757d;">لا توجد مدارس مطابقة لهذا التصنيف.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="color: #6c757d;">لا توجد مدارس مطابقة لهذا التصنيف.</td></tr>`;
             return;
         }
 
@@ -224,10 +240,12 @@
                 <tr class="${rowClass}">
                     <td style="font-family: monospace;">${s.id}</td>
                     <td style="font-weight: bold; text-align: right; padding-right: 10px;">${s.name}</td>
+                    <td>${s.level}</td>
+                    <td>${s.gender}</td>
                     <td>${statusBadge}</td>
                     <td><b>${s.empCount}</b></td>
                     <td>
-                        <button class="btn-yellow" onclick="editSchool('${s.id}', '${s.name.replace(/'/g, "\\'")}', '${s.lat}', '${s.lon}')">تعديل</button>
+                        <button class="btn-yellow" onclick="editSchool('${s.id}', '${s.name.replace(/'/g, "\\'")}', '${s.level}', '${s.gender}', '${s.lat}', '${s.lon}')">تعديل</button>
                         <button class="btn-red" onclick="deleteSchool('${s.id}')">حذف</button>
                     </td>
                 </tr>
@@ -239,16 +257,20 @@
     document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
         const sId = document.getElementById("schoolId").value.trim();
         const sName = document.getElementById("schoolName").value.trim();
+        const sLevel = document.getElementById("schoolLevel").value;
+        const sGender = document.getElementById("schoolGender").value;
         const sLat = parseFloat(document.getElementById("schoolLat").value);
         const sLon = parseFloat(document.getElementById("schoolLon").value);
 
-        if (!sId || !sName) {
-            alert("الرجاء ملء اسم المدرسة وكودها!");
+        if (!sId || !sName || !sLevel || !sGender) {
+            alert("الرجاء ملء جميع الحقول المطلوبة (اسم المدرسة، المرحلة، والجنس)!");
             return;
         }
 
         const schoolData = {
             name: sName,
+            level: sLevel,
+            gender: sGender,
             lat: isNaN(sLat) ? 0 : sLat,
             lon: isNaN(sLon) ? 0 : sLon,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -258,6 +280,8 @@
             if (isEditing) {
                 await db.collection("schools").doc(sId).update({
                     name: sName,
+                    level: sLevel,
+                    gender: sGender,
                     lat: schoolData.lat,
                     lon: schoolData.lon
                 });
@@ -279,13 +303,14 @@
         }
     });
 
-    window.editSchool = function(sId, sName, sLat, sLon) {
-        oldSchoolId = sId;
+    window.editSchool = function(sId, sName, sLevel, sGender, sLat, sLon) {
         const schoolIdInput = document.getElementById("schoolId");
         schoolIdInput.value = sId;
         schoolIdInput.disabled = true;
         
         document.getElementById("schoolName").value = sName;
+        document.getElementById("schoolLevel").value = sLevel;
+        document.getElementById("schoolGender").value = sGender;
         document.getElementById("schoolLat").value = sLat;
         document.getElementById("schoolLon").value = sLon;
         
@@ -315,13 +340,14 @@
         schoolIdInput.value = generateRandomSchoolId();
         
         document.getElementById("schoolName").value = "";
+        document.getElementById("schoolLevel").value = "";
+        document.getElementById("schoolGender").value = "";
         document.getElementById("schoolLat").value = "";
         document.getElementById("schoolLon").value = "";
         document.getElementById("formTitle").innerText = "إضافة مدرسة جديدة";
         document.getElementById("saveSchoolBtn").innerText = "حفظ المدرسة";
         document.getElementById("cancelEditBtn").style.display = "none";
         isEditing = false;
-        oldSchoolId = "";
     }
 </script>
 
