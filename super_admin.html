@@ -7,9 +7,6 @@
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        
-        .back-link { display: inline-block; margin-bottom: 20px; color: #007bff; text-decoration: none; font-weight: bold; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
-        .back-link:hover { background: #d0e1fd; }
 
         h2, h3 { color: #333; }
         .card { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ddd; }
@@ -40,8 +37,6 @@
 <body>
 
 <div class="container">
-    <a href="admin.html" class="back-link">← العودة لوحة الآدمن الرئيسية</a>
-
     <h2>👑 لوحة المشرف العام - متابعة وإدارة المدارس</h2>
     
     <!-- نموذج إضافة أو تعديل مدرسة -->
@@ -64,7 +59,7 @@
     <div class="card">
         <h3>📊 جدول متابعة حالة المدارس والنشاط</h3>
         
-        <!-- أزرار الفلترة الجديدة -->
+        <!-- أزرار الفلترة -->
         <div class="filter-bar">
             <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">جميع المدارس</button>
             <button class="filter-btn" id="filterActive" onclick="setFilter('active')">🟢 النشطة فقط</button>
@@ -106,8 +101,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let allSchoolsData = []; // تخزين البيانات مؤلداً للفلترة السريعة
-    let currentFilter = 'all'; // الفلتر الافتراضي
+    let allSchoolsData = []; 
+    let currentFilter = 'all'; 
     let isEditing = false;
     let oldSchoolId = "";
 
