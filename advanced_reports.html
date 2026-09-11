@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title id="pageTitle">تقارير الموظف المتقدمة</title>
-    <!-- مكتبة الطباعة لملف PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f4f7f6; text-align: center; }
@@ -94,10 +93,18 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get("school");
+    const isAdmin = urlParams.get("admin") === "true"; // التحقق إن كان المستخدم مشرفاً عاماً
 
     const backBtn = document.getElementById('backDashboardBtn');
     if (schoolId) {
-        backBtn.href = `dashboard.html?school=${schoolId}`;
+        if (isAdmin) {
+            // إذا كان مشرفاً عاماً، سيعود للوحة تحكم المدرسة مع الحفاظ على صلاحيات المشرف
+            backBtn.href = `dashboard.html?school=${schoolId}&admin=true`;
+            backBtn.innerText = "← العودة لوحة تحكم المدرسة (بصلاحية المشرف)";
+        } else {
+            backBtn.href = `dashboard.html?school=${schoolId}`;
+            backBtn.innerText = "← العودة لوحة التحكم الرئيسية";
+        }
     } else {
         backBtn.style.display = 'none';
     }
