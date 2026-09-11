@@ -50,12 +50,11 @@
     </table>
 </div>
 
-<!-- مكتبات Firebase (نسخة Compat) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDoc, addDoc, setDoc, deleteDoc, query, where, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-<script>
-    const firebaseConfig = {
+    const db = getFirestore(initializeApp({
         apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
         authDomain: "multischoolattendance.firebaseapp.com",
         projectId: "multischoolattendance",
@@ -63,11 +62,9 @@
         messagingSenderId: "539847508281",
         appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
         measurementId: "G-791M6F7WMC"
-    };
+    }));
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
+    // التقاط معرف المدرسة من الرابط أو التخزين المحلي (نفس نظام مشروعك المتعدد)
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
 
@@ -104,9 +101,8 @@
 
     window.renderTable = () => {
         const date = document.getElementById('dateSelector').value;
-        db.collection("schools").doc(schoolId).collection("attendance")
-          .where("date", "==", date)
-          .onSnapshot(snap => {
+        const attendanceRef = collection(db, "schools", schoolId, "attendance");
+        onSnapshot(query(attendanceRef, where("date", "==", date)), snap => {
             let rows = "";
             snap.forEach(d => {
                 let data = d.data();
@@ -129,11 +125,11 @@
     };
 
     window.updateExitTime = async (id, time) => { 
-        await db.collection("schools").doc(schoolId).collection("attendance").doc(id).set({ exitTime: time }, { merge: true }); 
+        await setDoc(doc(db, "schools", schoolId, "attendance", id), { exitTime: time }, { merge: true }); 
     };
 
     window.editAtt = (id, code, status, time, reason) => {
-        editingId = id; // تخزين معرف المستند المراد تعديله
+        editingId = id;
         document.getElementById('empCode').value = code;
         document.getElementById('status').value = status;
         document.getElementById('reason').value = reason;
@@ -157,40 +153,40 @@
 
         if(!code) { alert("يرجى إدخال كود الموظف"); return; }
 
-        const empSnap = await db.collection("schools").doc(schoolId).collection("employees").doc(code).get();
+        const empSnap = await getDoc(doc(db, "schools", schoolId, "employees", code));
         if (!empSnap.exists()) { alert("الكود غير موجود في قائمة موظفي هذه المدرسة!"); return; }
         
         const empData = empSnap.data();
         let status = statusRaw;
         
-        // إعادة احتساب الحالة تلقائياً بناءً على الوقت إذا كانت الحالة حاضر أو متأخر
+        // إعادة احتساب الحالة تلقائياً بناءً على الوقت إذا كانت الحالة حاضراً أو متأخراً
         if (status === "حاضر" || status === "متأخر") {
             status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
         }
 
+        const attendanceRef = collection(db, "schools", schoolId, "attendance");
+
         if (editingId) {
-            // تنفيذ التعديل مباشرة على المستند المخزن باستخدام editingId
-            await db.collection("schools").doc(schoolId).collection("attendance").doc(editingId).update({
+            // تحديث السجل الموجود داخل مسار المدرسة الصحيح
+            await setDoc(doc(db, "schools", schoolId, "attendance", editingId), {
                 empCode: code,
                 name: empData.name,
-                status: status,
+                status,
                 time: (status === "غائب" || status === "مجاز") ? "-" : timeInput,
                 reason: reason
-            });
+            }, { merge: true });
 
             alert("تم تحديث البيانات بنجاح");
             resetForm();
         } else {
-            const qSnap = await db.collection("schools").doc(schoolId).collection("attendance")
-                                  .where("empCode", "==", code)
-                                  .where("date", "==", date)
-                                  .get();
-            if (!qSnap.empty) { alert("الموظف مسجل بالفعل لهذا اليوم!"); return; }
+            // إضافة سجل جديد
+            const q = query(attendanceRef, where("empCode", "==", code), where("date", "==", date));
+            if (!(await getDocs(q)).empty) { alert("الموظف مسجل بالفعل لهذا اليوم!"); return; }
             
             const targetDateObj = new Date(date);
             const formattedDayName = targetDateObj.toLocaleDateString('ar-EG', {weekday: 'long', timeZone: 'Asia/Baghdad'});
 
-            await db.collection("schools").doc(schoolId).collection("attendance").add({ 
+            await addDoc(attendanceRef, { 
                 empCode: code, 
                 name: empData.name, 
                 status, 
@@ -207,7 +203,7 @@
     };
 
     function resetForm() {
-        editingId = null; // تفريغ معرف التعديل تماماً
+        editingId = null;
         document.getElementById('empCode').value = '';
         document.getElementById('reason').value = '';
         const btn = document.getElementById('actionBtn');
@@ -218,7 +214,7 @@
 
     window.deleteAtt = (id) => {
         if(confirm("هل أنت متأكد من حذف هذا السجل؟")) {
-            db.collection("schools").doc(schoolId).collection("attendance").doc(id).delete();
+            deleteDoc(doc(db, "schools", schoolId, "attendance", id));
         }
     };
 
