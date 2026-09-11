@@ -7,6 +7,9 @@
         body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
         .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
         
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
+        .back-link:hover { background: #d0e1fd; }
+
         /* تنسيق ترويسة اليوم والتاريخ الجديدة */
         .report-day-badge { background: #e2f0d9; color: #385723; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 16px; border: 1px solid #b7e1cd; }
 
@@ -38,8 +41,6 @@
         th:nth-child(6), td:nth-child(6) { width: 13%; } /* الحالة */
         th:nth-child(7), td:nth-child(7) { width: 18%; } /* السبب */
 
-        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
-        .back-link:hover { background: #d0e1fd; }
         .stats { display: flex; gap: 15px; margin-bottom: 15px; font-weight: bold; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 5px; }
 
         @media print {
@@ -53,6 +54,7 @@
 <body>
 
 <div class="container" id="printableArea">
+    <!-- تم نقل زر العودة إلى أعلى الصفحة هنا -->
     <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم</a>
     
     <div class="report-header">
@@ -144,6 +146,7 @@
         let backUrl = `dashboard.html?school=${schoolId}`;
         if (isAdmin) {
             backUrl += `&admin=true`;
+            backBtn.innerText = "← العودة لوحة التحكم (بصلاحية المشرف)";
         }
         backBtn.href = backUrl;
     } else {
