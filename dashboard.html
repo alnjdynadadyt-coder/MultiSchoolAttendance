@@ -31,13 +31,14 @@
     <h3 id="schoolTitle">جاري تحميل اسم المدرسة...</h3>
     <hr style="margin: 20px 0;">
 
-    <a href="quick.html" class="btn-nav btn-quick">⚡ التسجيل السريع (بحث وأزرار حضور)</a>
-    <a href="manual.html" class="btn-nav btn-manual">📝 التسجيل اليدوي المفصل</a>
-    <a href="employees.html" class="btn-nav btn-emps">👥 إدارة الموظفين (إضافة وتعديل)</a>
-    <a href="reports.html" class="btn-nav btn-reports">📊 الحضور، الغياب والتقارير</a>
-    <a href="summary.html" class="btn-nav" style="background: #6f42c1;">📈 الملخص الشامل للحضور والغياب</a>
-    <a href="advanced_reports.html" class="btn-nav" style="background: #17a2b8;">📈 التقارير المتقدمة وفلترة التواريخ</a>
-    <a href="backup.html" class="btn-nav" style="background: #343a40;">💾 النسخ الاحتياطي والاستيراد</a>
+    <!-- الأزرار مع معرّفات (IDs) لتوجيهها ديناميكياً لكود المدرسة -->
+    <a id="btnQuick" href="#" class="btn-nav btn-quick">⚡ التسجيل السريع (بحث وأزرار حضور)</a>
+    <a id="btnManual" href="#" class="btn-nav btn-manual">📝 التسجيل اليدوي المفصل</a>
+    <a id="btnEmps" href="#" class="btn-nav btn-emps">👥 إدارة الموظفين (إضافة وتعديل)</a>
+    <a id="btnReports" href="#" class="btn-nav btn-reports">📊 الحضور، الغياب والتقارير</a>
+    <a id="btnSummary" href="#" class="btn-nav" style="background: #6f42c1;">📈 الملخص الشامل للحضور والغياب</a>
+    <a id="btnAdvReports" href="#" class="btn-nav" style="background: #17a2b8;">📈 التقارير المتقدمة وفلترة التواريخ</a>
+    <a id="btnBackup" href="#" class="btn-nav" style="background: #343a40;">💾 النسخ الاحتياطي والاستيراد</a>
 
     <!-- قسم رابط التسجيل الخارجي للموظفين خاص بهذه المدرسة -->
     <div class="external-box">
@@ -84,6 +85,15 @@
                 document.getElementById("schoolTitle").innerText = "المدرسة: " + schoolId;
             }
         });
+
+        // ربط جميع أزرار لوحة التحكم بـ schoolId تلقائياً
+        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}`;
+        document.getElementById('btnManual').href = `manual.html?school=${schoolId}`;
+        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}`;
+        document.getElementById('btnReports').href = `reports.html?school=${schoolId}`;
+        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}`;
+        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}`;
+        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}`;
     }
 
     // إعداد رابط التسجيل الخارجي مع تمرير معرف المدرسة ضمن الرابط
