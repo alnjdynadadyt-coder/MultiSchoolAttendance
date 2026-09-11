@@ -94,9 +94,9 @@
     <div class="card">
         <h3>📊 جدول متابعة حالة المدارس والنشاط</h3>
         
-        <!-- لوحة الإحصائيات -->
+        <!-- لوحة الإحصائيات المحدثة ديناميكياً -->
         <div class="stats-box">
-            <div>إجمالي المدارس: <span id="statTotal">0</span></div>
+            <div>النتائج المطابقة: <span id="statTotal">0</span></div>
             <div>🟢 النشطة: <span id="statActive">0</span></div>
             <div>⚪ غير النشطة: <span id="statInactive">0</span></div>
         </div>
@@ -211,7 +211,7 @@
             if (snapshot.empty) {
                 tbody.innerHTML = `<tr><td colspan="7">لا توجد مدارس مسجلة.</td></tr>`;
                 allSchoolsData = [];
-                updateStats();
+                renderTable();
                 return;
             }
 
@@ -243,21 +243,10 @@
                 });
             }
 
-            updateStats();
             renderTable();
         } catch (error) {
             tbody.innerHTML = `<tr><td colspan="7" style="color: red;">خطأ في جلب البيانات: ${error.message}</td></tr>`;
         }
-    }
-
-    function updateStats() {
-        const total = allSchoolsData.length;
-        const active = allSchoolsData.filter(s => s.isActive).length;
-        const inactive = total - active;
-
-        document.getElementById("statTotal").innerText = total;
-        document.getElementById("statActive").innerText = active;
-        document.getElementById("statInactive").innerText = inactive;
     }
 
     function setActivityFilter(filterType) {
@@ -293,7 +282,16 @@
             filteredData = filteredData.filter(s => s.gender === selectedGender);
         }
 
-        if (filteredData.length === 0) {
+        // تحديث إحصائيات النتائج المطابقة للفرز الحالي
+        const totalFiltered = filteredData.length;
+        const activeFiltered = filteredData.filter(s => s.isActive).length;
+        const inactiveFiltered = totalFiltered - activeFiltered;
+
+        document.getElementById("statTotal").innerText = totalFiltered;
+        document.getElementById("statActive").innerText = activeFiltered;
+        document.getElementById("statInactive").innerText = inactiveFiltered;
+
+        if (totalFiltered === 0) {
             tbody.innerHTML = `<tr><td colspan="7" style="color: #6c757d;">لا توجد مدارس مطابقة لخيارات الفرز المحددة.</td></tr>`;
             return;
         }
