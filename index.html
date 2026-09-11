@@ -23,7 +23,7 @@
     <div class="container">
         <h2 id="formTitle">لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
-        <input type="text" id="schoolId" placeholder="كود المدرسة الإنجليزي (مثل: najdeen)">
+        <input type="text" id="schoolId" placeholder="كود المدرسة (حروف وأرقام مثل: najdeen123)">
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
 
         <button id="saveSchoolBtn" class="btn-green" style="width: 100%; font-size: 16px; margin-top: 5px;">إضافة المدرسة للقاعدة</button>
@@ -54,9 +54,10 @@
         const db = firebase.firestore();
 
         let isEditing = false;
+        let oldSchoolId = ""; // لتخزين الكود القديم عند التعديل
 
-        document.getElementById("saveSchoolBtn").addEventListener("click", function() {
-            const sId = document.getElementById("schoolId").value.trim().toLowerCase();
+        document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
+            const sId = document.getElementById("schoolId").value.trim();
             const sName = document.getElementById("schoolName").value.trim();
 
             if (!sId || !sName) {
@@ -64,31 +65,54 @@
                 return;
             }
 
-            const schoolRef = db.collection("schools").doc(sId);
+            try {
+                if (isEditing) {
+                    // إذا تم تغيير الكود، نقوم بإنشاء سجل جديد ونقل البيانات وحذف القديم
+                    if (sId !== oldSchoolId) {
+                        const oldDocRef = db.collection("schools").doc(oldSchoolId);
+                        const newDocRef = db.collection("schools").doc(sId);
 
-            if (isEditing) {
-                // تحديث اسم المدرسة حصرياً دون إعادة إنشائها
-                schoolRef.update({
-                    name: sName
-                }).then(() => {
+                        const docSnap = await oldDocRef.get();
+                        if (docSnap.exists) {
+                            await newDocRef.set({
+                                name: sName,
+                                createdAt: docSnap.data().createdAt || firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            await oldDocRef.delete();
+                        } else {
+                            await newDocRef.set({
+                                name: sName,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                    } else {
+                        // إذا بقي الكود كما هو، نقوم بتحديث الاسم فقط
+                        await db.collection("schools").doc(sId).update({ name: sName });
+                    }
+
                     alert("تم تعديل بيانات المدرسة بنجاح!");
                     resetForm();
                     loadSchools();
-                }).catch((error) => {
-                    alert("خطأ في التعديل: " + error.message);
-                });
-            } else {
-                // إضافة مدرسة جديدة لأول مرة
-                schoolRef.set({
-                    name: sName,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                }).then(() => {
+                } else {
+                    // إضافة مدرسة جديدة
+                    const schoolRef = db.collection("schools").doc(sId);
+                    const docCheck = await schoolRef.get();
+                    if (docCheck.exists) {
+                        alert("كود المدرسة موجود مسبقاً، الرجاء اختيار كود آخر.");
+                        return;
+                    }
+
+                    await schoolRef.set({
+                        name: sName,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
                     alert("تم إضافة المدرسة بنجاح!");
                     resetForm();
                     loadSchools();
-                }).catch((error) => {
-                    alert("خطأ في الإضافة: " + error.message);
-                });
+                }
+            } catch (error) {
+                alert("حدث خطأ: " + error.message);
             }
         });
 
@@ -126,8 +150,9 @@
         }
 
         window.editSchool = function(sId, sName) {
+            oldSchoolId = sId; // حفظ الكود القديم
             document.getElementById("schoolId").value = sId;
-            document.getElementById("schoolId").disabled = true; // قفل حقل الكود لكي لا يتغير أثناء التعديل
+            document.getElementById("schoolId").disabled = false; // السماح بتعديل الكود بحرية
             document.getElementById("schoolName").value = sName;
             
             document.getElementById("formTitle").innerText = "تعديل بيانات المدرسة: " + sId;
@@ -147,6 +172,7 @@
             document.getElementById("saveSchoolBtn").innerText = "إضافة المدرسة للقاعدة";
             document.getElementById("cancelEditBtn").style.display = "none";
             isEditing = false;
+            oldSchoolId = "";
         }
 
         window.deleteSchool = function(sId) {
