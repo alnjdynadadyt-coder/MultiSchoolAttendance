@@ -33,19 +33,19 @@
         <input type="text" id="schoolName" placeholder="مثال: متوسطة الفراهيدي">
     </div>
 
-    <button type="button" class="btn-action btn-info" id="gpsBtn">📍 جلب إحداثيات موقعي الحالي (GPS)</button>
+    <button type="button" class="btn-action btn-info" onclick="tryGetGPS()">📍 جلب إحداثيات موقعي الحالي (GPS)</button>
 
     <div class="form-group">
-        <label>خط العرض (Lat):</label>
-        <input type="number" id="lat" step="any" placeholder="0.0">
+        <label>خط العرض (Lat): <span style="font-size:11px; color:#666;">(يمكنك إدخاله يدوياً أيضاً)</span></label>
+        <input type="number" id="lat" step="any" placeholder="31.731739">
     </div>
 
     <div class="form-group">
-        <label>خط الطول (Lng):</label>
-        <input type="number" id="lng" step="any" placeholder="0.0">
+        <label>خط الطول (Lng): <span style="font-size:11px; color:#666;">(يمكنك إدخاله يدوياً أيضاً)</span></label>
+        <input type="number" id="lng" step="any" placeholder="44.980534">
     </div>
 
-    <button type="button" class="btn-action btn-success" id="saveBtn">💾 حفظ المدرسة في قاعدة البيانات</button>
+    <button type="button" class="btn-action btn-success" onclick="saveSchool()">💾 حفظ المدرسة في قاعدة البيانات</button>
     
     <div id="status"></div>
 
@@ -68,16 +68,16 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const statusDiv = document.getElementById("status");
 
-    // تفعيل زر جلب الـ GPS
-    document.getElementById("gpsBtn").addEventListener("click", () => {
+    // ربط الدوال بنافذة المتصفح لضمان استجابة الأزرار بنسبة 100%
+    window.tryGetGPS = function() {
+        const statusDiv = document.getElementById("status");
         statusDiv.className = "";
-        statusDiv.textContent = "جاري طلب إحداثيات الموقع... يرجى السماح للمتصفح.";
+        statusDiv.textContent = "جاري طلب إحداثيات الموقع عبر المتصفح...";
 
         if (!navigator.geolocation) {
             statusDiv.className = "error";
-            statusDiv.textContent = "متصفحك لا يدعم تحديد الموقع الجغرافي.";
+            statusDiv.textContent = "متصفحك لا يدعم تحديد الموقع، قم بكتابة الإحداثيات يدوياً.";
             return;
         }
 
@@ -90,21 +90,21 @@
             },
             (error) => {
                 statusDiv.className = "error";
-                statusDiv.textContent = "⚠ تعذر الحصول على الـ GPS تلقائياً. يمكنك كتابة الإحداثيات يدوياً.";
+                statusDiv.textContent = "⚠ تعذر جلب الـ GPS تلقائياً من الأيباد. يرجى إدخال الإحداثيات يدوياً في الخانات أدناه.";
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
         );
-    });
+    };
 
-    // تفعيل زر حفظ المدرسة (مع توليد معرف تلقائي وثبات نصف القطر على 100 متر)
-    document.getElementById("saveBtn").addEventListener("click", async () => {
+    window.saveSchool = async function() {
+        const statusDiv = document.getElementById("status");
         statusDiv.className = "";
-        statusDiv.textContent = "جاري حفظ المدرسة...";
+        statusDiv.textContent = "جاري الحفظ في قاعدة البيانات...";
 
         const name = document.getElementById("schoolName").value.trim();
         const lat = parseFloat(document.getElementById("lat").value);
         const lng = parseFloat(document.getElementById("lng").value);
-        const fixedRadius = 100; // ثابت لكل المدارس
+        const fixedRadius = 100; // مسافة ثابتة 100 متر لكل المدارس
 
         if (!name) {
             statusDiv.className = "error";
@@ -113,7 +113,7 @@
         }
         if (isNaN(lat) || isNaN(lng)) {
             statusDiv.className = "error";
-            statusDiv.textContent = "خط العرض وخط الطول مطلوبة (عبر الـ GPS أو يدوياً).";
+            statusDiv.textContent = "الرجاء التأكد من إدخال خط العرض وخط الطول (أرقام صحيحة).";
             return;
         }
 
@@ -129,7 +129,7 @@
             statusDiv.className = "success";
             statusDiv.textContent = "🎉 تم حفظ المدرسة (" + name + ") بنجاح في قاعدة البيانات!";
             
-            // تفريغ الحقول بعد الحفظ الناجح
+            // تفريغ الحقول بعد الحفظ
             document.getElementById("schoolName").value = "";
             document.getElementById("lat").value = "";
             document.getElementById("lng").value = "";
@@ -138,7 +138,7 @@
             statusDiv.textContent = "❌ خطأ في الحفظ: " + e.message;
             console.error("Firebase Error: ", e);
         }
-    });
+    };
 </script>
 
 </body>
