@@ -27,7 +27,8 @@
     <div class="container">
         <h2 id="formTitle">لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
-        <input type="text" id="schoolId" placeholder="كود المدرسة (حروف وأرقام مثل: najdeen123)">
+        <!-- حقل كود المدرسة يدوي -->
+        <input type="text" id="schoolId" placeholder="كود المدرسة (مثلاً: F1)">
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
         
         <div class="row-group">
@@ -89,6 +90,7 @@
             );
         }
 
+        // دالة الحفظ والتعديل الآمنة (تحديث الاسم والإحداثيات دون المساس بالمستند أو ضياع البيانات)
         document.getElementById("saveSchoolBtn").addEventListener("click", async function() {
             const sId = document.getElementById("schoolId").value.trim();
             const sName = document.getElementById("schoolName").value.trim();
@@ -109,26 +111,14 @@
 
             try {
                 if (isEditing) {
-                    if (sId !== oldSchoolId) {
-                        const oldDocRef = db.collection("schools").doc(oldSchoolId);
-                        const newDocRef = db.collection("schools").doc(sId);
+                    // في حالة التعديل، نقوم بتحديث الحقول فقط للمستند الحالي للحفاظ على كافة البيانات والارتباطات
+                    await db.collection("schools").doc(sId).update({
+                        name: sName,
+                        lat: schoolData.lat,
+                        lon: schoolData.lon
+                    });
 
-                        const docSnap = await oldDocRef.get();
-                        if (docSnap.exists) {
-                            await newDocRef.set(schoolData);
-                            await oldDocRef.delete();
-                        } else {
-                            await newDocRef.set(schoolData);
-                        }
-                    } else {
-                        await db.collection("schools").doc(sId).update({
-                            name: sName,
-                            lat: schoolData.lat,
-                            lon: schoolData.lon
-                        });
-                    }
-
-                    alert("تم تعديل بيانات المدرسة بنجاح!");
+                    alert("تم تحديث بيانات المدرسة بنجاح دون فقدان أي بيانات!");
                     resetForm();
                     loadSchools();
                 } else {
@@ -182,7 +172,7 @@
             });
         }
 
-        // تم التعديل هنا لإرسال علامة المشرف العام مع الرابط
+        // تمرير علامة المشرف العام عند الدخول للوحة التحكم
         window.enterSchool = function(schoolId) {
             window.location.href = `dashboard.html?school=${schoolId}&admin=true`;
         }
@@ -200,7 +190,10 @@
 
         window.editSchool = function(sId, sName, sLat, sLon) {
             oldSchoolId = sId;
-            document.getElementById("schoolId").value = sId;
+            const schoolIdInput = document.getElementById("schoolId");
+            schoolIdInput.value = sId;
+            schoolIdInput.disabled = true; // منع تعديل كود المدرسة لحماية البيانات المرتبطة بها
+            
             document.getElementById("schoolName").value = sName;
             document.getElementById("schoolLat").value = sLat;
             document.getElementById("schoolLon").value = sLon;
@@ -215,7 +208,10 @@
         document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
 
         function resetForm() {
-            document.getElementById("schoolId").value = "";
+            const schoolIdInput = document.getElementById("schoolId");
+            schoolIdInput.value = "";
+            schoolIdInput.disabled = false; // إعادة تفعيل الحقل عند إلغاء أو انتهاء التعديل
+            
             document.getElementById("schoolName").value = "";
             document.getElementById("schoolLat").value = "";
             document.getElementById("schoolLon").value = "";
