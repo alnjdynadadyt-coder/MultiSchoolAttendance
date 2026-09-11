@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة المشرف العام - إدارة المدارس</title>
+    <title>لوحة المساعد - إدارة المدارس</title>
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -21,6 +21,8 @@
         .btn-yellow { background-color: #ff9800; color: black; }
         .btn-red { background-color: #f44336; }
         .btn-purple { background-color: #6f42c1; width: 100%; margin-bottom: 10px; }
+        .btn-nav { background-color: #6f42c1; width: 100%; font-size: 16px; font-weight: bold; margin-bottom: 20px; padding: 12px; }
+        .btn-nav:hover { background-color: #5a329d; }
         
         /* أزرار الفلترة والتصفية */
         .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; }
@@ -38,7 +40,10 @@
 <body>
 
 <div class="container">
-    <h2>👑 لوحة المشرف العام - متابعة وإدارة المدارس</h2>
+    <!-- زر الانتقال للوحة المتابعة -->
+    <button class="btn btn-nav" onclick="location.href='admin.html'">📌 الانتقال إلى لوحة متابعة نشاط المدارس</button>
+
+    <h2>🤝 لوحة المساعد - إدارة المدارس</h2>
     
     <!-- نموذج إضافة أو تعديل مدرسة -->
     <div class="card">
@@ -285,7 +290,6 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // وظيفة حذف المدرسة
     window.deleteSchool = function(sId) {
         if (confirm("هل أنت متأكد من حذف المدرسة ذات الكود (" + sId + ") نهائياً؟")) {
             db.collection("schools").doc(sId).delete().then(() => {
