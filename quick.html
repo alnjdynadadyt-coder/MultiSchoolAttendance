@@ -29,7 +29,8 @@
         .btn-absent { background: #dc3545; color: white; padding: 8px 12px; border-radius: 5px; border: none; cursor: pointer; margin: 2px; font-weight: bold; }
         .btn-view-img { background: #ffc107; color: #333; padding: 5px 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; margin-top: 5px; display: inline-block; text-decoration: none; }
 
-        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
+        .back-link:hover { background: #d0e1fd; }
 
         /* نافذة اختيار طريقة إدخال الإجازة */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
@@ -46,11 +47,10 @@
 <body>
 
 <div class="container">
-    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم الرئيسية</a>
+    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم</a>
     
     <h2 id="mainHeading" style="color:#28a745; text-align:center;">⚡ لوحة التسجيل السريع للأسماء</h2>
     
-    <!-- حقل اختيار التاريخ واليوم -->
     <div class="date-container">
         <span id="selectedDayName">📅 اليوم: --</span>
         <div>
@@ -77,7 +77,6 @@
     </table>
 </div>
 
-<!-- نافذة اختيار طريقة إدخال الإجازة -->
 <div id="leaveModal" class="modal-overlay">
     <div class="modal-content">
         <h3>خيارات تسجيل الإجازة</h3>
@@ -89,7 +88,6 @@
     </div>
 </div>
 
-<!-- نافذة عرض الصورة المكبرة -->
 <div id="imageViewerModal" class="img-modal-overlay" onclick="closeImageViewer()">
     <div class="img-modal-content">
         <img id="enlargedLeaveImg" src="" alt="صورة الإجازة">
@@ -118,13 +116,18 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // التقاط كود المدرسة من الرابط
+    // التقاط كود المدرسة وصلاحية المشرف من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get("school");
+    const isAdmin = urlParams.get('admin') === 'true';
 
     const backBtn = document.getElementById('backDashboardBtn');
     if (schoolId) {
-        backBtn.href = `dashboard.html?school=${schoolId}`;
+        let backUrl = `dashboard.html?school=${schoolId}`;
+        if (isAdmin) {
+            backUrl += `&admin=true`;
+        }
+        backBtn.href = backUrl;
     } else {
         backBtn.style.display = 'none';
     }
@@ -356,7 +359,6 @@
 
     async function loadEmployees() {
         if (!schoolId) return;
-        // جلب سجلات الحضور والإجازات للتاريخ المحدد لهذه المدرسة حصراً
         const attSnap = await getDocs(query(getAttendanceRef(), where("date", "==", selectedDateStr)));
         attendanceMap = {};
         attSnap.forEach(d => {
