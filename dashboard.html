@@ -23,9 +23,8 @@
 <body>
 
 <div class="container">
-    <!-- زر العودة يظهر فقط للمشرف القادم من لوحة الأدمن -->
     <div id="backButtonContainer" style="text-align: right; display: none;">
-        <a href="admin.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
+        <a id="backAdminBtn" href="admin.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
     </div>
 
     <h2 style="color:#007bff; margin-top: 5px;">نظام إدارة الحضور والتقارير</h2>
@@ -72,9 +71,10 @@
     let schoolId = urlParams.get('school');
     let isAdmin = urlParams.get('admin');
 
-    // إذا كان الزائر هو المشرف العام، يتم إظهار زر العودة
+    // إذا كان الزائر هو المشرف العام، يتم إظهار زر العودة المخصص للوحة الأدمن
     if (isAdmin === 'true') {
         document.getElementById('backButtonContainer').style.display = 'block';
+        document.getElementById('backAdminBtn').href = "admin.html"; // تأكيد العودة لصفحة الأدمن
     }
 
     if (!schoolId) {
@@ -95,6 +95,7 @@
             }
         });
 
+        // تمرير حالة المشرف (admin=true) لجميع الأقسام الفرعية لكي تظل صالحة عند التنقل
         const adminParam = isAdmin === 'true' ? '&admin=true' : '';
         document.getElementById('btnQuick').href = `quick.html?school=${schoolId}${adminParam}`;
         document.getElementById('btnManual').href = `manual.html?school=${schoolId}${adminParam}`;
