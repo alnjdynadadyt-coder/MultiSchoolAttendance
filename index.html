@@ -3,51 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة الحضور والتقارير - متعدد المدارس</title>
+    <title>منصة إدارة المدارس - إضافة موظف</title>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f3; margin: 0; padding: 20px; direction: rtl; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
-        h2 { color: #007bff; margin-bottom: 5px; }
-        h3 { color: #555; margin-top: 0; font-size: 16px; margin-bottom: 25px; }
-        .btn-menu { display: block; width: 100%; padding: 15px; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; margin-bottom: 15px; text-align: right; box-shadow: 0 2px 5px rgba(0,0,0,0.15); text-decoration: none; }
-        .btn-schools { background: #28a745; } /* أخضر لإدارة المدارس */
-        .btn-attendance { background: #007bff; } /* أزرق لتسجيل الحضور */
-        .external-box { margin-top: 30px; background: #e8f4fd; padding: 15px; border-radius: 8px; border: 1px solid #b8daff; text-align: center; }
-        input { width: 65%; padding: 8px; font-size: 12px; direction: ltr; text-align: left; }
-        .copy-btn { background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:hover { background-color: #45a049; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>نظام إدارة الحضور والتقارير الجغرافي</h2>
-    <h3>لوحة التحكم المركزية - متعدد المدارس</h3>
-    <hr style="margin: 20px 0; border:0; border-top:1px solid #eee;">
+    <div class="container">
+        <h2>تسجيل موظف جديد للمدرسة</h2>
+        
+        <label for="schoolCode">كود المدرسة (مثال: najdeen):</label>
+        <input type="text" id="schoolCode" placeholder="أدخل كود المدرسة">
 
-    <!-- الأزرار الرئيسية بتصميم النجدين المريح -->
-    <a href="schools.html" class="btn-menu btn-schools">🏫 إدارة وإضافة المدارس (GPS والحدود)</a>
-    <a href="attendance.html" class="btn-menu btn-attendance">📍 تسجيل الحضور الجغرافي للموظفين</a>
+        <label for="empName">اسم الموظف:</label>
+        <input type="text" id="empName" placeholder="أدخل اسم الموظف">
 
-    <!-- رابط المشاركة للموظفين -->
-    <div class="external-box">
-        <h4 style="margin-top: 0; color: #004085;">🔗 رابط النظام للموظفين</h4>
-        <p style="font-size: 12px; color: #333; margin-bottom: 10px;">انسخ الرابط وشاركه مع الكادر:</p>
-        <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="externalLink" readonly>
-            <button class="copy-btn" onclick="copyLink()">نسخ</button>
-        </div>
+        <label for="empBarcode">رقم الباركود:</label>
+        <input type="text" id="empBarcode" placeholder="أدخل رقم الباركود">
+
+        <button id="saveBtn">حفظ الموظف في القاعدة</button>
     </div>
-</div>
 
-<script>
-    document.getElementById('externalLink').value = window.location.href.split('?')[0];
-    function copyLink() {
-        let copyText = document.getElementById("externalLink");
-        copyText.select();
-        navigator.clipboard.writeText(copyText.value);
-        alert("تم نسخ الرابط بنجاح!");
-    }
-</script>
+    <!-- استدعاء مكتبات Firebase (الإصدار 9 المتوافق) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
+    <script>
+        // إعدادات Firebase الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+            authDomain: "multischoolattendance.firebaseapp.com",
+            projectId: "multischoolattendance",
+            storageBucket: "multischoolattendance.firebasestorage.app",
+            messagingSenderId: "539847508281",
+            appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+            measurementId: "G-791M6F7WMC"
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // الحدث عند الضغط على زر الحفظ
+        document.getElementById("saveBtn").addEventListener("click", function() {
+            const schoolId = document.getElementById("schoolCode").value.trim();
+            const name = document.getElementById("empName").value.trim();
+            const barcode = document.getElementById("empBarcode").value.trim();
+
+            if (!schoolId || !name || !barcode) {
+                alert("الرجاء ملء جميع الحقول!");
+                return;
+            }
+
+            // تخزين البيانات في مسار المدرسة المعزول داخل Firestore
+            db.collection("schools").doc(schoolId).collection("employees").add({
+                name: name,
+                barcode: barcode,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert("تم حفظ الموظف بنجاح في قاعدة بيانات المدرسة " + schoolId);
+                document.getElementById("empName").value = "";
+                document.getElementById("empBarcode").value = "";
+            })
+            .catch((error) => {
+                console.error("خطأ في الحفظ: ", error);
+                alert("حدث خطأ، راجع وحدة التحكم (Console)");
+            });
+        });
+    </script>
 </body>
 </html>
