@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>التسجيل اليدوي - لوحة الإدارة</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: auto; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #007bff; color: white; }
+        
+        /* تخصيص وتوسيع مساحة الاسم وتصغير حقل الانصراف */
+        th:nth-child(1), td:nth-child(1) { width: 20%; min-width: 110px; font-weight: bold; }
+        th:nth-child(8), td:nth-child(8) { width: 130px; }
+        td:nth-child(5) input[type="time"] { width: 85px; padding: 5px; font-size: 13px; text-align: center; }
+
+        .btn-edit { background: #ffc107; color: #333; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; margin-left: 3px; }
+        .btn-del { background: #ff4d4d; color: white; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- تم تعديل رابط العودة ليعمل ديناميكياً مع كود المدرسة -->
+    <a id="backLink" href="#" class="back-link">← العودة لوحة التحكم الرئيسية</a>
+    <h2 style="color:#007bff; text-align:center;">📝 التسجيل اليدوي المفصل للحضور</h2>
+    
+    <div class="input-group">
+        <input type="date" id="dateSelector" onchange="renderTable()">
+        <input type="text" id="empCode" placeholder="كود الموظف">
+        <select id="status">
+            <option>حاضر</option>
+            <option>متأخر</option>
+            <option>مجاز</option>
+            <option>غائب</option>
+        </select>
+        <input type="text" id="reason" placeholder="سبب الغياب أو الملاحظة">
+        <input type="time" id="customTime">
+        <button id="actionBtn" onclick="saveAttendance()" style="background:#007bff; color:white; font-weight:bold;">تسجيل يدوي</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr><th>الاسم</th><th>اليوم</th><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th><th>السبب</th><th>إجراء</th></tr>
+        </thead>
+        <tbody id="attendanceTable"></tbody>
+    </table>
+</div>
+
+<!-- مكتبات Firebase (نسخة Compat لضمان التوافق التام مع باقي النظام لديك) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // استخراج كود المدرسة من الرابط أو الذاكرة المحلية
+    const urlParams = new URLSearchParams(window.location.search);
+    let schoolId = urlParams.get('school');
+
+    if (!schoolId) {
+        schoolId = localStorage.getItem("currentSchoolId");
+    }
+
+    if (!schoolId) {
+        alert("لم يتم تحديد المدرسة! سيتم توجيهك للصفحة الرئيسية.");
+        window.location.href = "index.html";
+    } else {
+        localStorage.setItem("currentSchoolId", schoolId);
+        // ضبط زر العودة ليعمل ديناميكياً مع المدرسة الحالية
+        document.getElementById('backLink').href = `dashboard.html?school=${schoolId}`;
+    }
+
+    const nowObj = new Date();
+    const baghdadDate = nowObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' });
+    const baghdadTime = nowObj.toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Asia/Baghdad' });
+
+    document.getElementById('dateSelector').value = baghdadDate;
+    document.getElementById('customTime').value = baghdadTime;
+
+    let editingId = null;
+
+    const getLimit = (type, dayIndex, timeInput) => {
+        const [h, m] = timeInput.split(':').map(Number);
+        const timeVal = h * 60 + m;
+        if (type === "حارس") return (timeVal < 12 * 60) ? "07:10" : "17:10";
+        if (type === "موظف") return (timeVal < 11 * 60) ? "07:10" : "12:10";
+        if (type === "إداري") return "07:40";
+        if (type === "مدرس") return "08:10";
+        return "08:10";
+    };
+
+    window.renderTable = () => {
+        const date = document.getElementById('dateSelector').value;
+        // ربط استعلام الحضور بمجموعة المدرسة المحددة
+        db.collection("schools").doc(schoolId).collection("attendance")
+          .where("date", "==", date)
+          .onSnapshot(snap => {
+            let rows = "";
+            snap.forEach(d => {
+                let data = d.data();
+                rows += `<tr>
+                    <td>${data.name}</td>
+                    <td>${data.day}</td>
+                    <td>${data.date}</td>
+                    <td>${data.time}</td>
+                    <td><input type="time" onchange="updateExitTime('${d.id}', this.value)" value="${data.exitTime || ''}"></td>
+                    <td>${data.status}</td>
+                    <td>${data.reason || ''}</td>
+                    <td>
+                        <button class="btn-edit" onclick="editAtt('${d.id}', '${data.empCode}', '${data.status}', '${data.time}', '${data.reason || ''}')">تعديل</button>
+                        <button class="btn-del" onclick="deleteAtt('${d.id}')">حذف</button>
+                    </td>
+                </tr>`;
+            });
+            document.getElementById('attendanceTable').innerHTML = rows;
+        });
+    };
+
+    window.updateExitTime = async (id, time) => { 
+        await db.collection("schools").doc(schoolId).collection("attendance").doc(id).set({ exitTime: time }, { merge: true }); 
+    };
+
+    window.editAtt = (id, code, status, time, reason) => {
+        editingId = id;
+        document.getElementById('empCode').value = code;
+        document.getElementById('status').value = status;
+        document.getElementById('reason').value = reason;
+        if(time && time !== '-') {
+            document.getElementById('customTime').value = time;
+        }
+        const btn = document.getElementById('actionBtn');
+        btn.innerText = "تحديث البيانات";
+        btn.style.background = "#ffc107";
+        btn.style.color = "#333";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.saveAttendance = async () => {
+        const code = document.getElementById('empCode').value.trim();
+        const date = document.getElementById('dateSelector').value;
+        const statusRaw = document.getElementById('status').value;
+        const timeInput = document.getElementById('customTime').value;
+        const reason = document.getElementById('reason').value;
+        const dayIndex = new Date(date).getDay();
+
+        if(!code) { alert("يرجى إدخال كود الموظف"); return; }
+
+        const empSnap = await db.collection("schools").doc(schoolId).collection("employees").doc(code).get();
+        if (!empSnap.exists()) { alert("الكود غير موجود في قائمة موظفي هذه المدرسة!"); return; }
+        
+        const empData = empSnap.data();
+        let status = statusRaw;
+        if (status === "حاضر") {
+            status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
+        }
+
+        if (editingId) {
+            // تحديث السجل الموجود ضمن المدرسة الحالية
+            await db.collection("schools").doc(schoolId).collection("attendance").doc(editingId).set({
+                empCode: code,
+                name: empData.name,
+                status,
+                time: (status === "غائب" || status === "مجاز") ? "-" : timeInput,
+                reason: reason
+            }, { merge: true });
+
+            alert("تم تحديث البيانات بنجاح");
+            resetForm();
+        } else {
+            // التحقق مما إذا كان الموظف مسجلاً مسبقاً في نفس اليوم ضمن هذه المدرسة
+            const qSnap = await db.collection("schools").doc(schoolId).collection("attendance")
+                                  .where("empCode", "==", code)
+                                  .where("date", "==", date)
+                                  .get();
+            if (!qSnap.empty) { alert("الموظف مسجل بالفعل لهذا اليوم!"); return; }
+            
+            const targetDateObj = new Date(date);
+            const formattedDayName = targetDateObj.toLocaleDateString('ar-EG', {weekday: 'long', timeZone: 'Asia/Baghdad'});
+
+            await db.collection("schools").doc(schoolId).collection("attendance").add({ 
+                empCode: code, 
+                name: empData.name, 
+                status, 
+                time: (status === "غائب" || status === "مجاز") ? "-" : timeInput, 
+                exitTime: "", 
+                date, 
+                day: formattedDayName, 
+                reason: reason 
+            });
+            
+            alert("تم التسجيل بنجاح كـ: " + status);
+            resetForm();
+        }
+    };
+
+    function resetForm() {
+        editingId = null;
+        document.getElementById('empCode').value = '';
+        document.getElementById('reason').value = '';
+        const btn = document.getElementById('actionBtn');
+        btn.innerText = "تسجيل يدوي";
+        btn.style.background = "#007bff";
+        btn.style.color = "white";
+    }
+
+    window.deleteAtt = (id) => {
+        if(confirm("هل أنت متأكد من حذف هذا السجل؟")) {
+            db.collection("schools").doc(schoolId).collection("attendance").doc(id).delete();
+        }
+    };
+
+    renderTable();
+</script>
+</body>
+</html>
