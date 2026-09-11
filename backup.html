@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title id="pageTitle">النسخ الاحتياطي والاستيراد</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; text-align: center; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .box { background: #e8f4fd; padding: 20px; border-radius: 8px; border: 1px solid #b8daff; margin-bottom: 20px; }
+        .btn { padding: 12px 25px; font-size: 16px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        .btn-backup { background: #28a745; }
+        .btn-restore { background: #dc3545; }
+        #statusMsg { margin-top: 10px; font-weight: bold; color: #333; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 id="mainHeading" style="color: #333;">إدارة النسخ الاحتياطي</h2>
+    
+    <div class="box">
+        <h3>النسخ الاحتياطي للبيانات</h3>
+        <p style="font-size: 13px; color: #555;">احفظ نسخة من جميع بيانات الموظفين والحضور الخاصة بهذه المدرسة بصيغة ملف JSON.</p>
+        <button class="btn btn-backup" onclick="exportBackup()">تحميل نسخة احتياطية</button>
+    </div>
+
+    <div class="box" style="background: #f8d7da; border-color: #f5c6cb;">
+        <h3 style="color: #721c24;">استيراد النسخة الاحتياطية</h3>
+        <p style="font-size: 13px; color: #721c24;">استعادة بيانات الموظفين والحضور لهذه المدرسة من ملف نسخ احتياطي سابق.</p>
+        <input type="file" id="importFile" accept=".json" style="margin-bottom: 10px; width: 100%;">
+        <button class="btn btn-restore" onclick="importBackup()">استيراد البيانات</button>
+        <div id="statusMsg"></div>
+    </div>
+
+    <br>
+    <a href="#" id="backDashboardBtn" style="color: #007bff; text-decoration: none; font-weight: bold;">← العودة لوحة التحكم الرئيسية</a>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // التقاط كود المدرسة من الرابط
+    const urlParams = new URLSearchParams(window.location.search);
+    const schoolId = urlParams.get("school");
+
+    const backBtn = document.getElementById('backDashboardBtn');
+    if (schoolId) {
+        backBtn.href = `dashboard.html?school=${schoolId}`;
+    } else {
+        backBtn.style.display = 'none';
+    }
+
+    // جلب اسم المدرسة وتحديث العناوين
+    if (schoolId) {
+        getDoc(doc(db, "schools", schoolId)).then((schoolDoc) => {
+            if (schoolDoc.exists()) {
+                const schoolName = schoolDoc.data().name;
+                document.getElementById('pageTitle').innerText = `النسخ الاحتياطي - ${schoolName}`;
+                document.getElementById('mainHeading').innerText = `إدارة النسخ الاحتياطي - ${schoolName}`;
+            }
+        });
+    }
+
+    // مراجع المجموعات الفرعية للمدرسة الحالية
+    const getEmployeesRef = () => collection(db, "schools", schoolId, "employees");
+    const getAttendanceRef = () => collection(db, "schools", schoolId, "attendance");
+
+    const showStatus = (text, color = "#333") => {
+        const msg = document.getElementById('statusMsg');
+        msg.style.color = color;
+        msg.innerText = text;
+    };
+
+    window.exportBackup = async () => {
+        if (!schoolId) {
+            alert("رابط غير صالح! لم يتم تحديد المدرسة.");
+            return;
+        }
+
+        try {
+            showStatus("جاري تجهيز النسخة الاحتياطية...", "#007bff");
+            let backupData = { employees: {}, attendance: {} };
+            
+            const empSnap = await getDocs(getEmployeesRef());
+            empSnap.forEach(d => { backupData.employees[d.id] = d.data(); });
+
+            const attSnap = await getDocs(getAttendanceRef());
+            attSnap.forEach(d => { backupData.attendance[d.id] = d.data(); });
+
+            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+            let dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `school_${schoolId}_backup_` + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showStatus("تم تحميل النسخة الاحتياطية بنجاح!", "green");
+        } catch (e) {
+            console.error(e);
+            showStatus("حدث خطأ أثناء تصدير النسخة الاحتياطية.", "red");
+        }
+    };
+
+    window.importBackup = async () => {
+        if (!schoolId) {
+            alert("رابط غير صالح! لم يتم تحديد المدرسة.");
+            return;
+        }
+
+        const fileInput = document.getElementById('importFile');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            alert("يرجى اختيار ملف النسخة الاحتياطية أولاً!");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        showStatus("جاري قراءة الملف...", "#007bff");
+
+        const reader = new FileReader();
+
+        reader.onload = async function(event) {
+            try {
+                showStatus("جاري تحليل بيانات الملف...", "#007bff");
+                const data = JSON.parse(event.target.result);
+                let countEmployees = 0;
+                let countAttendance = 0;
+                
+                showStatus("جاري رفع البيانات إلى قاعدة بيانات المدرسة...", "#007bff");
+
+                if (data.employees) {
+                    for (let id in data.employees) {
+                        await setDoc(doc(db, "schools", schoolId, "employees", id), data.employees[id]);
+                        countEmployees++;
+                    }
+                }
+
+                if (data.attendance) {
+                    for (let id in data.attendance) {
+                        await setDoc(doc(db, "schools", schoolId, "attendance", id), data.attendance[id]);
+                        countAttendance++;
+                    }
+                }
+
+                showStatus(`تم استيراد البيانات بنجاح للمدرسة! (موظفين: ${countEmployees}, حضور: ${countAttendance})`, "green");
+                alert(`تم استيراد البيانات بنجاح!\n- الموظفين: ${countEmployees}\n- سجلات الحضور: ${countAttendance}`);
+            } catch (e) {
+                console.error(e);
+                showStatus("خطأ: الملف غير صالح أو تالف.", "red");
+                alert("ملف غير صالح أو حدث خطأ أثناء تحليل JSON.");
+            }
+        };
+
+        reader.onerror = function() {
+            showStatus("خطأ في قراءة الملف من الجهاز.", "red");
+            alert("فشل في قراءة الملف.");
+        };
+
+        reader.readAsText(file);
+    };
+</script>
+</body>
+</html>
