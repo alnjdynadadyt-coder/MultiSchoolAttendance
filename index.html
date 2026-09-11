@@ -6,25 +6,28 @@
     <title>منصة إدارة المدارس - لوحة المشرف العام</title>
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #2196F3; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
-        button:hover { background-color: #0b7dda; }
-        .school-card { background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        button { background-color: #2196F3; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-left: 5px; }
+        button:hover { opacity: 0.9; }
+        .btn-green { background-color: #4CAF50; }
+        .btn-yellow { background-color: #ff9800; color: black; }
+        .btn-red { background-color: #f44336; }
+        .school-card { background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .school-info { flex-grow: 1; margin-bottom: 5px; }
+        .school-actions { display: flex; gap: 5px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>لوحة المشرف العام: إضافة مدرسة جديدة</h2>
+        <h2 id="formTitle">لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
-        <label for="schoolId">كود المدرسة الإنجليزي (مثل: najdeen):</label>
-        <input type="text" id="schoolId" placeholder="أدخل الكود بدون مسافات">
+        <input type="text" id="schoolId" placeholder="كود المدرسة الإنجليزي (مثل: najdeen)">
+        <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
 
-        <label for="schoolName">اسم المدرسة الرسمي:</label>
-        <input type="text" id="schoolName" placeholder="أدخل اسم المدرسة">
-
-        <button id="addSchoolBtn">إضافة المدرسة للقاعدة</button>
+        <button id="saveSchoolBtn" class="btn-green" style="width: 100%; font-size: 16px; margin-top: 5px;">إضافة المدرسة للقاعدة</button>
+        <button id="cancelEditBtn" style="width: 100%; background: #6c757d; display: none; margin-top: 5px;">إلغاء التعديل</button>
         
         <hr style="margin: 20px 0;">
         
@@ -50,8 +53,10 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // زر إضافة مدرسة جديدة
-        document.getElementById("addSchoolBtn").addEventListener("click", function() {
+        let isEditing = false;
+
+        // زر الحفظ أو التعديل
+        document.getElementById("saveSchoolBtn").addEventListener("click", function() {
             const sId = document.getElementById("schoolId").value.trim().toLowerCase();
             const sName = document.getElementById("schoolName").value.trim();
 
@@ -60,23 +65,35 @@
                 return;
             }
 
-            // حفظ المدرسة كمستند رئيسي في مجموعة schools
-            db.collection("schools").doc(sId).set({
-                name: sName,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                alert("تم إضافة المدرسة بنجاح!");
-                document.getElementById("schoolId").value = "";
-                document.getElementById("schoolName").value = "";
-                loadSchools();
-            })
-            .catch((error) => {
-                alert("حدث خطأ: " + error.message);
-            });
+            const schoolRef = db.collection("schools").doc(sId);
+
+            if (isEditing) {
+                // تحديث اسم المدرسة فقط
+                schoolRef.update({
+                    name: sName
+                }).then(() => {
+                    alert("تم تعديل بيانات المدرسة بنجاح!");
+                    resetForm();
+                    loadSchools();
+                }).catch((error) => {
+                    alert("خطأ في التعديل: " + error.message);
+                });
+            } else {
+                // إضافة مدرسة جديدة
+                schoolRef.set({
+                    name: sName,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    alert("تم إضافة المدرسة بنجاح!");
+                    resetForm();
+                    loadSchools();
+                }).catch((error) => {
+                    alert("خطأ في الإضافة: " + error.message);
+                });
+            }
         });
 
-        // دالة لعرض المدارس المسجلة وتوفير زر للدخول إلى لوحة كل مدرسة
+        // دالة لعرض المدارس مع أزرار (دخول، تعديل، حذف)
         function loadSchools() {
             const listDiv = document.getElementById("schoolsList");
             listDiv.innerHTML = "";
@@ -93,18 +110,60 @@
                     const card = document.createElement("div");
                     card.className = "school-card";
                     card.innerHTML = `
-                        <span><b>${data.name}</b> (${sId})</span>
-                        <button style="width: auto; padding: 5px 10px; font-size: 14px;" onclick="enterSchool('${sId}')">دخول للوحة</button>
+                        <div class="school-info"><b>${data.name}</b> <span style="color:#666; font-size:12px;">(${sId})</span></div>
+                        <div class="school-actions">
+                            <button class="btn-green" onclick="enterSchool('${sId}')">دخول</button>
+                            <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name}')">تعديل</button>
+                            <button class="btn-red" onclick="deleteSchool('${sId}')">حذف</button>
+                        </div>
                     `;
                     listDiv.appendChild(card);
                 });
             });
         }
 
-        // الانتقال لوحة تحكم المدرسة المحددة
+        // الانتقال للوحة التحكم الخاصة بالمدرسة
         window.enterSchool = function(schoolId) {
             localStorage.setItem("currentSchoolId", schoolId);
             window.location.href = "dashboard.html";
+        }
+
+        // تفعيل وضع التعديل
+        window.editSchool = function(sId, sName) {
+            document.getElementById("schoolId").value = sId;
+            document.getElementById("schoolId").disabled =لا; // منع تغيير الكود لأنه مفتاح أساسي
+            document.getElementById("schoolName").value = sName;
+            
+            document.getElementById("formTitle").innerText = "تعديل بيانات المدرسة: " + sId;
+            document.getElementById("saveSchoolBtn").innerText = "حفظ التعديلات";
+            document.getElementById("cancelEditBtn").style.display = "block";
+            isEditing = true;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // إلغاء التعديل
+        document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
+
+        function resetForm() {
+            document.getElementById("schoolId").value = "";
+            document.getElementById("schoolId").disabled = false;
+            document.getElementById("schoolName").value = "";
+            document.getElementById("formTitle").innerText = "لوحة المشرف العام: إضافة مدرسة جديدة";
+            document.getElementById("saveSchoolBtn").innerText = "إضافة المدرسة للقاعدة";
+            document.getElementById("cancelEditBtn").style.display = "none";
+            isEditing = false;
+        }
+
+        // حذف المدرسة
+        window.deleteSchool = function(sId) {
+            if (confirm("هل أنت متأكد من حذف المدرسة (" + sId + ")؟ سيتم حذف كافة بياناتها!")) {
+                db.collection("schools").doc(sId).delete().then(() => {
+                    alert("تم حذف المدرسة بنجاح.");
+                    loadSchools();
+                }).catch((error) => {
+                    alert("حدث خطأ أثناء الحذف: " + error.message);
+                });
+            }
         }
 
         // تحميل القائمة عند فتح الصفحة
