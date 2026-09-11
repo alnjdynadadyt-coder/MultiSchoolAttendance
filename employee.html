@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الحضور الخارجي للموظفين</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        input { padding: 15px; width: 80%; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; text-align: center; box-sizing: border-box; }
+        .btn-reg { padding: 15px; font-size: 16px; color: white; border: none; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+        #statusMsg { margin-bottom: 20px; font-weight: bold; padding: 10px; border-radius: 5px; font-size: 14px; }
+        
+        .info-card { background: #f8f9fa; border: 1px solid #dcdcdc; border-radius: 10px; padding: 18px; margin-top: 20px; text-align: right; display: none; }
+        .info-card h3 { margin-top: 0; color: #007bff; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 8px; font-size: 18px; }
+        .info-row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 15px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+        .info-label { font-weight: bold; color: #444; }
+        .info-value { color: #111; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 id="schoolTitle">تسجيل الحضور اليومي</h2>
+    <div id="statusMsg" style="background: #e2f0d9; color: #385723;">جاري التحقق من موقع المدرسة والموقع الجغرافي...</div>
+    
+    <div id="regArea" style="display:none;">
+        <input type="text" id="empCode" placeholder="أدخل كود الموظف / الباركود">
+        <button class="btn-reg" style="background:#28a745;" onclick="registerAttendance('attendance')">تسجيل الحضور</button>
+        <button class="btn-reg" style="background:#6f42c1;" onclick="registerAttendance('exit')">تسجيل الانصراف</button>
+    </div>
+
+    <!-- بطاقة عرض البيانات الفورية للموظف -->
+    <div id="employeeCard" class="info-card">
+        <h3 id="cardEmpName">---</h3>
+        <div class="info-row">
+            <span class="info-label">يوم وتاريخ الحضور:</span>
+            <span class="info-value" id="cardDate">---</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">وقت الحضور:</span>
+            <span class="info-value" id="cardTime">---</span>
+        </div>
+        <div class="info-row" id="exitRow" style="display: none;">
+            <span class="info-label">يوم وتاريخ الانصراف:</span>
+            <span class="info-value" id="cardExitDate">---</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">وقت الانصراف:</span>
+            <span class="info-value" id="cardExit">---</span>
+        </div>
+        <div class="info-row" style="border-bottom: none;">
+            <span class="info-label">الحالة:</span>
+            <span class="info-value" id="cardStatus" style="color: #28a745;">---</span>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
+        authDomain: "multischoolattendance.firebaseapp.com",
+        projectId: "multischoolattendance",
+        storageBucket: "multischoolattendance.firebasestorage.app",
+        messagingSenderId: "539847508281",
+        appId: "1:539847508281:web:13c73bf4260af3ecfb68e8",
+        measurementId: "G-791M6F7WMC"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // التقاط كود المدرسة من الرابط
+    const urlParams = new URLSearchParams(window.location.search);
+    const schoolId = urlParams.get("school");
+
+    const msgDiv = document.getElementById('statusMsg');
+
+    if (!schoolId) {
+        msgDiv.style.background = "#f8f9fa";
+        msgDiv.style.color = "#721c24";
+        msgDiv.innerText = "رابط غير صالح! ينسى استخدام الرابط الخاص بمدرستك.";
+    } else {
+        // جلب بيانات المدرسة من القاعدة (بما فيها إحداثياتها الجغرافية)
+        db.collection("schools").doc(schoolId).get().then(docSnap => {
+            if (!docSnap.exists) {
+                msgDiv.style.background = "#f8f9fa";
+                msgDiv.style.color = "#721c24";
+                msgDiv.innerText = "عذراً، المدرسة المطلوبة غير موجودة في النظام.";
+                return;
+            }
+
+            const schoolData = docSnap.data();
+            document.getElementById('schoolTitle').innerText = "تسجيل الحضور - " + schoolData.name;
+
+            // استخدام إحداثيات المدرسة المخزنة في قاعدة البيانات (افتراض قيم افتراضية في حال لم تضبط بعد)
+            const SCHOOL_LAT = schoolData.lat || 31.7296172;
+            const SCHOOL_LON = schoolData.lng || 44.9905462;
+            const ALLOWED_RADIUS = schoolData.radius || 3500; // النطاق بالأمتار
+
+            // التحقق من الموقع الجغرافي للموظف مقارنة بإحداثيات المدرسة
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const dist = 6371e3 * 2 * Math.atan2(Math.sqrt(Math.sin(((pos.coords.latitude-SCHOOL_LAT)*Math.PI/180)/2)**2 + Math.cos(SCHOOL_LAT*Math.PI/180)*Math.cos(pos.coords.latitude*Math.PI/180)*Math.sin(((pos.coords.longitude-SCHOOL_LON)*Math.PI/180)/2)**2), Math.sqrt(1 - (Math.sin(((pos.coords.latitude-SCHOOL_LAT)*Math.PI/180)/2)**2 + Math.cos(SCHOOL_LAT*Math.PI/180)*Math.cos(pos.coords.latitude*Math.PI/180)*Math.sin(((pos.coords.longitude-SCHOOL_LON)*Math.PI/180)/2)**2)));
+                    
+                    if (dist <= ALLOWED_RADIUS) { 
+                        isLocationVerified = true; 
+                        msgDiv.style.background = "#e2f0d9";
+                        msgDiv.style.color = "#385723";
+                        msgDiv.innerText = "أهلاً بك، أنت ضمن نطاق المدرسة المسموح. يمكنك التسجيل الآن."; 
+                        document.getElementById('regArea').style.display = "block"; 
+                    } else { 
+                        msgDiv.style.background = "#f8f9fa";
+                        msgDiv.style.color = "#721c24";
+                        msgDiv.innerText = "عذراً، أنت خارج نطاق المدرسة (المسافة: " + Math.round(dist) + " متر)."; 
+                    }
+                }, () => {
+                    msgDiv.style.background = "#f8f9fa";
+                    msgDiv.style.color = "#721c24";
+                    msgDiv.innerText = "يرجى السماح بالوصول للموقع الجغرافي (GPS) لإتمام التسجيل.";
+                }, { enableHighAccuracy: true });
+            } else {
+                msgDiv.innerText = "متصفحك لا يدعم خاصية تحديد الموقع الجغرافي.";
+            }
+        });
+    }
+
+    let isLocationVerified = false;
+
+    const getLimit = (type, timeInput) => {
+        const [h, m] = timeInput.split(':').map(Number);
+        const timeVal = h * 60 + m;
+        if (type === "حارس") return (timeVal < 12 * 60) ? "07:10" : "17:10";
+        if (type === "موظف") return (timeVal < 11 * 60) ? "07:10" : "12:10";
+        if (type === "إداري") return "07:40";
+        if (type === "مدرس") return "08:10";
+        return "08:10";
+    };
+
+    window.registerAttendance = async (action) => {
+        if (!isLocationVerified) return alert("الموقع غير مؤكد أو أنك خارج النطاق المسموح للمدرسة!");
+        
+        const code = document.getElementById('empCode').value.trim();
+        if (!code) return alert("يرجى إدخال كود الموظف!");
+
+        // جلب الموظف من مجموعة هذه المدرسة حصرياً
+        const empSnap = await db.collection("schools").doc(schoolId).collection("employees").doc(code).get();
+        if (!empSnap.exists()) return alert("كود الموظف غير صحيح أو غير مسجل في هذه المدرسة!");
+        
+        const empData = empSnap.data();
+        const nowObj = new Date();
+        const currentDate = nowObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' });
+        const currentDayName = nowObj.toLocaleDateString('ar-EG', { weekday: 'long', timeZone: 'Asia/Baghdad' });
+        const dayIndex = nowObj.getDay();
+        const now = nowObj.toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Asia/Baghdad' });
+
+        let status = (now > getLimit(empData.type, now)) ? "متأخر" : "حاضر";
+
+        // مرجع سجلات الحضور الخاصة بهذه المدرسة فقط
+        const attRef = db.collection("schools").doc(schoolId).collection("attendance");
+        const snap = await attRef.where("empCode", "==", code).get();
+        
+        let targetDoc = null;
+        let existingData = null;
+
+        if (!snap.empty) {
+            let docsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            docsList.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            let openRecord = docsList.find(d => !d.exitTime || d.exitTime === "" || d.exitTime === "---");
+            if (openRecord) {
+                targetDoc = openRecord;
+                existingData = openRecord;
+            } else if (docsList.length > 0 && docsList[0].date === currentDate) {
+                targetDoc = snap.docs.find(d => d.id === docsList[0].id);
+                existingData = docsList[0];
+            }
+        }
+        
+        if (action === 'attendance') {
+            if (existingData && existingData.date === currentDate && existingData.time && existingData.time !== "" && existingData.time !== "---") {
+                document.getElementById('cardEmpName').innerText = empData.name;
+                document.getElementById('cardDate').innerText = `${existingData.day || ''} - ${existingData.date}`;
+                document.getElementById('cardTime').innerText = existingData.time;
+                document.getElementById('cardExit').innerText = existingData.exitTime || "---";
+                if(existingData.exitDate && existingData.exitDate !== existingData.date) {
+                    document.getElementById('exitRow').style.display = "flex";
+                    document.getElementById('cardExitDate').innerText = `${existingData.exitDay || ''} - ${existingData.exitDate}`;
+                } else {
+                    document.getElementById('exitRow').style.display = "none";
+                }
+                document.getElementById('cardStatus').innerText = existingData.status;
+                document.getElementById('cardStatus').style.color = (existingData.status === "متأخر") ? "#d9534f" : "#28a745";
+                document.getElementById('employeeCard').style.display = "block";
+                
+                alert("عذراً، لقد قمت بتسجيل الحضور مسبقاً ولا يمكنك تكراره إلا بعد تسجيل الانصراف!");
+                return;
+            }
+
+            await attRef.add({ 
+                empCode: code, 
+                name: empData.name, 
+                status, 
+                time: now, 
+                exitTime: "", 
+                date: currentDate, 
+                day: currentDayName,
+                reason: "-"
+            });
+
+            document.getElementById('cardEmpName').innerText = empData.name;
+            document.getElementById('cardDate').innerText = `${currentDayName} - ${currentDate}`;
+            document.getElementById('cardTime').innerText = now;
+            document.getElementById('cardExit').innerText = "---";
+            document.getElementById('exitRow').style.display = "none";
+            document.getElementById('cardStatus').innerText = status;
+            document.getElementById('cardStatus').style.color = (status === "متأخر") ? "#d9534f" : "#28a745";
+            document.getElementById('employeeCard').style.display = "block";
+
+            alert("تم تسجيل الحضور بنجاح كـ: " + status);
+
+        } else {
+            if (!existingData || (existingData.exitTime && existingData.exitTime !== "" && existingData.exitTime !== "---")) {
+                alert("لم يتم العثور على سجل حضور مفتوح (يحتاج إلى انصراف) لهذا الكود!");
+                return;
+            }
+
+            if (["مدرس", "إداري", "موظف"].includes(empData.type)) {
+                const [h, m] = now.split(':').map(Number);
+                const timeVal = h * 60 + m;
+                if (timeVal < 11 * 60) {
+                    alert("عذراً، لا يمكن تسجيل الانصراف قبل الساعة 11:00 صباحاً لهذه الفئة!");
+                    return;
+                }
+            }
+
+            await attRef.doc(targetDoc.id).set({ 
+                exitTime: now, 
+                exitDate: currentDate,
+                exitDay: currentDayName
+            }, { merge: true });
+
+            document.getElementById('cardEmpName').innerText = empData.name;
+            document.getElementById('cardDate').innerText = `${existingData.day || ''} - ${existingData.date}`;
+            document.getElementById('cardTime').innerText = existingData.time || "---";
+            document.getElementById('cardExit').innerText = now;
+            
+            if (currentDate !== existingData.date) {
+                document.getElementById('exitRow').style.display = "flex";
+                document.getElementById('cardExitDate').innerText = `${currentDayName} - ${currentDate}`;
+            } else {
+                document.getElementById('exitRow').style.display = "none";
+            }
+
+            document.getElementById('cardStatus').innerText = existingData.status || "حاضر";
+            document.getElementById('employeeCard').style.display = "block";
+
+            alert("تم تسجيل الانصراف بنجاح لتاريخ الحضور: " + existingData.date);
+        }
+    };
+</script>
+</body>
+</html>
