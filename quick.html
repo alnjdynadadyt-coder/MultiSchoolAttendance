@@ -29,7 +29,7 @@
         .btn-absent { background: #dc3545; color: white; padding: 8px 12px; border-radius: 5px; border: none; cursor: pointer; margin: 2px; font-weight: bold; }
         .btn-view-img { background: #ffc107; color: #333; padding: 5px 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; margin-top: 5px; display: inline-block; text-decoration: none; }
 
-        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px; }
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
 
         /* نافذة اختيار طريقة إدخال الإجازة */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
@@ -46,7 +46,7 @@
 <body>
 
 <div class="container">
-    <a href="#" id="backDashboardBtn" class="back-link">← العودة</a>
+    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم الرئيسية</a>
     
     <h2 id="mainHeading" style="color:#28a745; text-align:center;">⚡ لوحة التسجيل السريع للأسماء</h2>
     
@@ -101,7 +101,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -118,41 +118,27 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // التقاط معاملات الرابط
+    // التقاط كود المدرسة من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get("school");
-    const isAdmin = urlParams.get("admin") === "true"; // التحقق إن كان القادم هو المشرف العام
 
     const backBtn = document.getElementById('backDashboardBtn');
-    
     if (schoolId) {
-        if (isAdmin) {
-            // إذا جاء من لوحة المشرف العام، يعود لصفحة المشرف (أو يمكنك تعديل اسم صفحة المشرف العام هنا إن كانت غير index.html)
-            backBtn.href = `index.html`; 
-            backBtn.innerText = "← العودة إلى لوحة المشرف العام";
-        } else {
-            // إذا كان مدير مدرسة عادي
-            backBtn.href = `dashboard.html?school=${schoolId}`;
-            backBtn.innerText = "← العودة لوحة التحكم الرئيسية";
-        }
+        backBtn.href = `dashboard.html?school=${schoolId}`;
     } else {
         backBtn.style.display = 'none';
     }
 
     // جلب اسم المدرسة وتحديث الترويسة
     if (schoolId) {
-        (async () => {
-            try {
-                const schoolDoc = await getDoc(doc(db, "schools", schoolId));
-                if (schoolDoc.exists()) {
-                    const schoolName = schoolDoc.data().name;
-                    document.getElementById('pageTitle').innerText = `التسجيل السريع - ${schoolName}`;
-                    document.getElementById('mainHeading').innerText = `⚡ لوحة التسجيل السريع - ${schoolName}`;
-                }
-            } catch (err) {
-                console.error("خطأ في جلب بيانات المدرسة:", err);
+        import("https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js").then(async ({ getDoc, doc }) => {
+            const schoolDoc = await getDoc(doc(db, "schools", schoolId));
+            if (schoolDoc.exists()) {
+                const schoolName = schoolDoc.data().name;
+                document.getElementById('pageTitle').innerText = `التسجيل السريع - ${schoolName}`;
+                document.getElementById('mainHeading').innerText = `⚡ لوحة التسجيل السريع - ${schoolName}`;
             }
-        })();
+        });
     }
 
     // ضبط التاريخ الحالي كافتراضي عند فتح الصفحة
@@ -194,6 +180,7 @@
     let selectedLeaveMethod = null;
     let attendanceMap = {};
 
+    // مراجع المجموعات الفرعية للمدرسة الحالية
     const getEmployeesRef = () => collection(db, "schools", schoolId, "employees");
     const getAttendanceRef = () => collection(db, "schools", schoolId, "attendance");
 
@@ -369,6 +356,7 @@
 
     async function loadEmployees() {
         if (!schoolId) return;
+        // جلب سجلات الحضور والإجازات للتاريخ المحدد لهذه المدرسة حصراً
         const attSnap = await getDocs(query(getAttendanceRef(), where("date", "==", selectedDateStr)));
         attendanceMap = {};
         attSnap.forEach(d => {
