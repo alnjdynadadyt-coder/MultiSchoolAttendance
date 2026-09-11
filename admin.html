@@ -27,7 +27,12 @@
     <div class="container">
         <h2 id="formTitle">لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
-        <input type="text" id="schoolId" placeholder="كود المدرسة (حروف وأرقام مثل: najdeen123)">
+        <!-- حقل كود المدرسة مع زر التوليد التلقائي الفريد -->
+        <div style="display: flex; gap: 5px; align-items: center;">
+            <input type="text" id="schoolId" placeholder="كود المدرسة (أو اضغط توليد تلقائي)" style="flex-grow: 1; margin: 8px 0;">
+            <button type="button" class="btn-blue" onclick="generateRandomSchoolId()" style="margin: 0; padding: 10px;">⚡ توليد تلقائي</button>
+        </div>
+
         <input type="text" id="schoolName" placeholder="اسم المدرسة الرسمي">
         
         <div class="row-group">
@@ -68,6 +73,39 @@
 
         let isEditing = false;
         let oldSchoolId = "";
+
+        // أنماط التوزيع العشوائي للحرف ورقمين (لتوليد آلاف الاحتمالات الفريدة مثل H10 أو 1H0 أو 10H)
+        const formats = [
+            (l, d1, d2) => `${l}${d1}${d2}`,
+            (l, d1, d2) => `${d1}${l}${d2}`,
+            (l, d1, d2) => `${d1}${d2}${l}`,
+            (l, d1, d2) => `${l}${d2}${d1}`
+        ];
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const digits = "0123456789";
+
+        // دالة توليد كود تلقائي عشوائي فريد بالكامل (لا يتكرر في قاعدة البيانات)
+        window.generateRandomSchoolId = async function() {
+            let isUnique = false;
+            let finalCode = "";
+
+            while (!isUnique) {
+                const randomLetter = letters.charAt(Math.floor(Math.random() * letters.length));
+                const randomDigit1 = digits.charAt(Math.floor(Math.random() * digits.length));
+                const randomDigit2 = digits.charAt(Math.floor(Math.random() * digits.length));
+                const randomFormat = formats[Math.floor(Math.random() * formats.length)];
+                
+                finalCode = randomFormat(randomLetter, randomDigit1, randomDigit2);
+
+                // فحص عدم تكرار الكود في قاعدة بيانات فايربيس
+                const docCheck = await db.collection("schools").doc(finalCode).get();
+                if (!docCheck.exists) {
+                    isUnique = true;
+                }
+            }
+
+            document.getElementById("schoolId").value = finalCode;
+        }
 
         // دالة جلب الموقع الجغرافي الحالي للمشرف عبر الـ GPS
         window.getMyLocation = function() {
@@ -182,7 +220,7 @@
             });
         }
 
-        // تم التعديل هنا لإرسال علامة المشرف العام مع الرابط
+        // تمرير علامة المشرف العام عند الدخول للوحة التحكم
         window.enterSchool = function(schoolId) {
             window.location.href = `dashboard.html?school=${schoolId}&admin=true`;
         }
