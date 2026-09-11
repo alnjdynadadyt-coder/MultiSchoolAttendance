@@ -3,38 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة إدارة المدارس - إضافة موظف</title>
+    <title>منصة إدارة المدارس - لوحة المشرف العام</title>
     <style>
         body { font-family: Tahoma, sans-serif; background-color: #f4f7f6; padding: 20px; text-align: right; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
-        button:hover { background-color: #45a049; }
+        button { background-color: #2196F3; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
+        button:hover { background-color: #0b7dda; }
+        .school-card { background: #e9ecef; padding: 10px; margin-top: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>تسجيل موظف جديد للمدرسة</h2>
+        <h2>لوحة المشرف العام: إضافة مدرسة جديدة</h2>
         
-        <label for="schoolCode">كود المدرسة (مثال: najdeen):</label>
-        <input type="text" id="schoolCode" placeholder="أدخل كود المدرسة">
+        <label for="schoolId">كود المدرسة الإنجليزي (مثل: najdeen):</label>
+        <input type="text" id="schoolId" placeholder="أدخل الكود بدون مسافات">
 
-        <label for="empName">اسم الموظف:</label>
-        <input type="text" id="empName" placeholder="أدخل اسم الموظف">
+        <label for="schoolName">اسم المدرسة الرسمي:</label>
+        <input type="text" id="schoolName" placeholder="أدخل اسم المدرسة">
 
-        <label for="empBarcode">رقم الباركود:</label>
-        <input type="text" id="empBarcode" placeholder="أدخل رقم الباركود">
-
-        <button id="saveBtn">حفظ الموظف في القاعدة</button>
+        <button id="addSchoolBtn">إضافة المدرسة للقاعدة</button>
+        
+        <hr style="margin: 20px 0;">
+        
+        <h3>المدارس المسجلة:</h3>
+        <div id="schoolsList">جاري تحميل المدارس...</div>
     </div>
 
-    <!-- استدعاء مكتبات Firebase (الإصدار 9 المتوافق) -->
+    <!-- مكتبات Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
     <script>
-        // إعدادات Firebase الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyBoHjQBVK98JsbBFs5Ty-NTmAHKpz0jLhc",
             authDomain: "multischoolattendance.firebaseapp.com",
@@ -45,37 +47,68 @@
             measurementId: "G-791M6F7WMC"
         };
 
-        // تهيئة Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // الحدث عند الضغط على زر الحفظ
-        document.getElementById("saveBtn").addEventListener("click", function() {
-            const schoolId = document.getElementById("schoolCode").value.trim();
-            const name = document.getElementById("empName").value.trim();
-            const barcode = document.getElementById("empBarcode").value.trim();
+        // زر إضافة مدرسة جديدة
+        document.getElementById("addSchoolBtn").addEventListener("click", function() {
+            const sId = document.getElementById("schoolId").value.trim().toLowerCase();
+            const sName = document.getElementById("schoolName").value.trim();
 
-            if (!schoolId || !name || !barcode) {
+            if (!sId || !sName) {
                 alert("الرجاء ملء جميع الحقول!");
                 return;
             }
 
-            // تخزين البيانات في مسار المدرسة المعزول داخل Firestore
-            db.collection("schools").doc(schoolId).collection("employees").add({
-                name: name,
-                barcode: barcode,
+            // حفظ المدرسة كمستند رئيسي في مجموعة schools
+            db.collection("schools").doc(sId).set({
+                name: sName,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             })
             .then(() => {
-                alert("تم حفظ الموظف بنجاح في قاعدة بيانات المدرسة " + schoolId);
-                document.getElementById("empName").value = "";
-                document.getElementById("empBarcode").value = "";
+                alert("تم إضافة المدرسة بنجاح!");
+                document.getElementById("schoolId").value = "";
+                document.getElementById("schoolName").value = "";
+                loadSchools();
             })
             .catch((error) => {
-                console.error("خطأ في الحفظ: ", error);
-                alert("حدث خطأ، راجع وحدة التحكم (Console)");
+                alert("حدث خطأ: " + error.message);
             });
         });
+
+        // دالة لعرض المدارس المسجلة وتوفير زر للدخول إلى لوحة كل مدرسة
+        function loadSchools() {
+            const listDiv = document.getElementById("schoolsList");
+            listDiv.innerHTML = "";
+
+            db.collection("schools").get().then((querySnapshot) => {
+                if(querySnapshot.empty) {
+                    listDiv.innerHTML = "لا توجد مدارس مسجلة بعد.";
+                    return;
+                }
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const sId = doc.id;
+                    
+                    const card = document.createElement("div");
+                    card.className = "school-card";
+                    card.innerHTML = `
+                        <span><b>${data.name}</b> (${sId})</span>
+                        <button style="width: auto; padding: 5px 10px; font-size: 14px;" onclick="enterSchool('${sId}')">دخول للوحة</button>
+                    `;
+                    listDiv.appendChild(card);
+                });
+            });
+        }
+
+        // الانتقال لوحة تحكم المدرسة المحددة
+        window.enterSchool = function(schoolId) {
+            localStorage.setItem("currentSchoolId", schoolId);
+            window.location.href = "dashboard.html";
+        }
+
+        // تحميل القائمة عند فتح الصفحة
+        loadSchools();
     </script>
 </body>
 </html>
