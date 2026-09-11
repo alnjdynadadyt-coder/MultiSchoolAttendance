@@ -57,6 +57,17 @@
             </select>
         </div>
 
+        <!-- حقل تصنيف المدرسة الجديد -->
+        <div class="row-group">
+            <select id="schoolClassification" style="width: 100%;">
+                <option value="">-- اختر تصنيف دوام المدرسة --</option>
+                <option value="أحادية">أحادية</option>
+                <option value="مزدوجة">مزدوجة</option>
+                <option value="ثلاثية">ثلاثية</option>
+                <option value="مسائية بحته">مسائية بحته</option>
+            </select>
+        </div>
+
         <!-- حقول كلمة المرور -->
         <div class="row-group">
             <input type="password" id="schoolPassword" placeholder="كلمة مرور دخول المدير">
@@ -139,6 +150,7 @@
             const sName = document.getElementById("schoolName").value.trim();
             const sLevel = document.getElementById("schoolLevel").value;
             const sGender = document.getElementById("schoolGender").value;
+            const sClassification = document.getElementById("schoolClassification").value;
             const sPass = document.getElementById("schoolPassword").value.trim();
             const sPassConfirm = document.getElementById("schoolPasswordConfirm").value.trim();
             const sLat = parseFloat(document.getElementById("schoolLat").value);
@@ -159,6 +171,7 @@
                 name: sName,
                 level: sLevel,
                 gender: sGender,
+                classification: sClassification,
                 lat: isNaN(sLat) ? 0 : sLat,
                 lon: isNaN(sLon) ? 0 : sLon,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -175,6 +188,7 @@
                         name: sName,
                         level: sLevel,
                         gender: sGender,
+                        classification: sClassification,
                         lat: schoolData.lat,
                         lon: schoolData.lon
                     };
@@ -227,7 +241,8 @@
                     const passText = data.password ? `🔑 كلمة المرور: <b>${data.password}</b>` : `<span style="color:red;">⚠️ بدون كلمة مرور</span>`;
                     const levelText = data.level ? `📚 ${data.level}` : "";
                     const genderText = data.gender ? `👥 ${data.gender}` : "";
-                    const badgeDetails = [levelText, genderText].filter(Boolean).join(" | ");
+                    const classText = data.classification ? `🏛️ ${data.classification}` : "";
+                    const badgeDetails = [levelText, genderText, classText].filter(Boolean).join(" | ");
                     
                     const card = document.createElement("div");
                     card.className = "school-card";
@@ -241,7 +256,7 @@
                         <div class="school-actions">
                             <button class="btn-green" onclick="enterSchool('${sId}')">دخول</button>
                             <button class="btn-blue" onclick="copySchoolLink('${sId}')">نسخ الرابط</button>
-                            <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name || ""}', '${data.level || ""}', '${data.gender || ""}', '${data.lat || ""}', '${data.lon || ""}', '${data.password || ""}')">تعديل</button>
+                            <button class="btn-yellow" onclick="editSchool('${sId}', '${data.name || ""}', '${data.level || ""}', '${data.gender || ""}', '${data.classification || ""}', '${data.lat || ""}', '${data.lon || ""}', '${data.password || ""}')">تعديل</button>
                             <button class="btn-red" onclick="deleteSchool('${sId}')">حذف</button>
                         </div>
                     `;
@@ -265,7 +280,7 @@
             });
         }
 
-        window.editSchool = function(sId, sName, sLevel, sGender, sLat, sLon, sPass) {
+        window.editSchool = function(sId, sName, sLevel, sGender, sClassification, sLat, sLon, sPass) {
             oldSchoolId = sId;
             const schoolIdInput = document.getElementById("schoolId");
             schoolIdInput.value = sId;
@@ -274,6 +289,7 @@
             document.getElementById("schoolName").value = sName;
             document.getElementById("schoolLevel").value = sLevel;
             document.getElementById("schoolGender").value = sGender;
+            document.getElementById("schoolClassification").value = sClassification;
             document.getElementById("schoolLat").value = sLat;
             document.getElementById("schoolLon").value = sLon;
             document.getElementById("schoolPassword").value = sPass;
@@ -296,6 +312,7 @@
             document.getElementById("schoolName").value = "";
             document.getElementById("schoolLevel").value = "";
             document.getElementById("schoolGender").value = "";
+            document.getElementById("schoolClassification").value = "";
             document.getElementById("schoolLat").value = "";
             document.getElementById("schoolLon").value = "";
             document.getElementById("schoolPassword").value = "";
