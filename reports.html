@@ -38,7 +38,8 @@
         th:nth-child(6), td:nth-child(6) { width: 13%; } /* الحالة */
         th:nth-child(7), td:nth-child(7) { width: 18%; } /* السبب */
 
-        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 15px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px; background: #e7f1ff; padding: 8px 15px; border-radius: 5px; border: 1px solid #b8daff; }
+        .back-link:hover { background: #d0e1fd; }
         .stats { display: flex; gap: 15px; margin-bottom: 15px; font-weight: bold; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 5px; }
 
         @media print {
@@ -52,7 +53,7 @@
 <body>
 
 <div class="container" id="printableArea">
-    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم الرئيسية</a>
+    <a href="#" id="backDashboardBtn" class="back-link">← العودة لوحة التحكم</a>
     
     <div class="report-header">
         <h2 id="printSchoolName">اسم المدرسة</h2>
@@ -133,13 +134,18 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // التقاط كود المدرسة من الرابط
+    // التقاط كود المدرسة وصلاحية المشرف من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get("school");
+    const isAdmin = urlParams.get('admin') === 'true';
 
     const backBtn = document.getElementById('backDashboardBtn');
     if (schoolId) {
-        backBtn.href = `dashboard.html?school=${schoolId}`;
+        let backUrl = `dashboard.html?school=${schoolId}`;
+        if (isAdmin) {
+            backUrl += `&admin=true`;
+        }
+        backBtn.href = backUrl;
     } else {
         backBtn.style.display = 'none';
     }
