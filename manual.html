@@ -133,7 +133,7 @@
     };
 
     window.editAtt = (id, code, status, time, reason) => {
-        editingId = id;
+        editingId = id; // تخزين معرف المستند المراد تعديله
         document.getElementById('empCode').value = code;
         document.getElementById('status').value = status;
         document.getElementById('reason').value = reason;
@@ -169,14 +169,14 @@
         }
 
         if (editingId) {
-            // تحديث السجل الموجود وضمان تحديث الحالة والوقت بدقة
-            await db.collection("schools").doc(schoolId).collection("attendance").doc(editingId).set({
+            // تنفيذ التعديل مباشرة على المستند المخزن باستخدام editingId
+            await db.collection("schools").doc(schoolId).collection("attendance").doc(editingId).update({
                 empCode: code,
                 name: empData.name,
-                status,
+                status: status,
                 time: (status === "غائب" || status === "مجاز") ? "-" : timeInput,
                 reason: reason
-            }, { merge: true });
+            });
 
             alert("تم تحديث البيانات بنجاح");
             resetForm();
@@ -207,7 +207,7 @@
     };
 
     function resetForm() {
-        editingId = null;
+        editingId = null; // تفريغ معرف التعديل تماماً
         document.getElementById('empCode').value = '';
         document.getElementById('reason').value = '';
         const btn = document.getElementById('actionBtn');
