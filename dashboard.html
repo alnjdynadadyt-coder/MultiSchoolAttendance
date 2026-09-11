@@ -23,6 +23,7 @@
 <body>
 
 <div class="container">
+    <!-- زر العودة يظهر حصراً للمشرف أو المساعد بناءً على المعاملات القادمة -->
     <div id="backButtonContainer" style="text-align: right; display: none;">
         <a id="backAdminBtn" href="admin.html" class="back-btn">⬅ العودة لقائمة المدارس</a>
     </div>
@@ -69,12 +70,23 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     let schoolId = urlParams.get('school');
-    let isAdmin = urlParams.get('admin');
+    
+    // التحقق الدقيق من صلاحيات المشرف العام أو المساعد
+    const fromParam = urlParams.get('from');
+    const adminParamVal = urlParams.get('admin');
+    const isSuperAdminOrAdmin = (fromParam === 'admin' || adminParamVal === 'true' || fromParam === 'super_admin');
 
-    // إذا كان الزائر هو المشرف العام، يتم إظهار زر العودة المخصص للوحة الأدمن
-    if (isAdmin === 'true') {
+    if (isSuperAdminOrAdmin) {
         document.getElementById('backButtonContainer').style.display = 'block';
-        document.getElementById('backAdminBtn').href = "admin.html"; // تأكيد العودة لصفحة الأدمن
+        // توجيه زر العودة حسب مصدر الدخول (سواء من صفحة الـ admin أو الـ super_admin)
+        if (fromParam === 'super_admin') {
+            document.getElementById('backAdminBtn').href = "super_admin.html";
+            document.getElementById('backAdminBtn').innerText = "⬅ العودة لوحة المساعد";
+        } else {
+            document.getElementById('backAdminBtn').href = "admin.html";
+        }
+    } else {
+        document.getElementById('backButtonContainer').style.display = 'none';
     }
 
     if (!schoolId) {
@@ -95,15 +107,14 @@
             }
         });
 
-        // تمرير حالة المشرف (admin=true) لجميع الأقسام الفرعية لكي تظل صالحة عند التنقل
-        const adminParam = isAdmin === 'true' ? '&admin=true' : '';
-        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}${adminParam}`;
-        document.getElementById('btnManual').href = `manual.html?school=${schoolId}${adminParam}`;
-        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}${adminParam}`;
-        document.getElementById('btnReports').href = `reports.html?school=${schoolId}${adminParam}`;
-        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}${adminParam}`;
-        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}${adminParam}`;
-        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}${adminParam}`;
+        // الروابط الفرعية أصبحت تفتح بمعرف المدرسة فقط دون تمرير صلاحيات المشرف لتكون آمنة تماماً لمدير المدرسة
+        document.getElementById('btnQuick').href = `quick.html?school=${schoolId}`;
+        document.getElementById('btnManual').href = `manual.html?school=${schoolId}`;
+        document.getElementById('btnEmps').href = `employees.html?school=${schoolId}`;
+        document.getElementById('btnReports').href = `reports.html?school=${schoolId}`;
+        document.getElementById('btnSummary').href = `summary.html?school=${schoolId}`;
+        document.getElementById('btnAdvReports').href = `advanced_reports.html?school=${schoolId}`;
+        document.getElementById('btnBackup').href = `backup.html?school=${schoolId}`;
     }
 
     let currentBase = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
