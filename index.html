@@ -6,24 +6,48 @@
     <style>
         body { font-family: sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 15px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center; }
-        .btn { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        input { width: 100%; padding: 12px; margin: 10px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; text-align: center; }
+        .btn { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn:hover { background: #0056b3; }
         #errorMsg { color: red; margin-top: 10px; font-size: 14px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div class="login-card">
     <h2 style="color: #333; margin-bottom: 10px;">بوابة دخول المدارس</h2>
-    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">أدخل كود المدرسة للتوجه إلى لوحة التحكم</p>
+    <p id="instructionText" style="color: #666; font-size: 14px; margin-bottom: 20px;">أدخل كود المدرسة للتوجه إلى لوحة التحكم</p>
     
-    <input type="text" id="schoolCodeInput" placeholder="أدخل كود المدرسة (مثل: n1)">
-    <button class="btn" onclick="loginToSchool()">دخول لوحة التحكم</button>
+    <!-- خطوة 1: إدخال كود المدرسة -->
+    <div id="stepCode">
+        <input type="text" id="schoolCodeInput" placeholder="أدخل كود المدرسة (مثل: n1)">
+        <button class="btn" onclick="checkSchoolCode()">التالي</button>
+    </div>
+
+    <!-- خطوة 2: إدخال كلمة المرور (تظهر حسب حالة المدرسة) -->
+    <div id="stepPassword" class="hidden">
+        <input type="hidden" id="verifiedSchoolCode">
+        
+        <!-- تظهر في المرة الأولى (إنشاء كلمة مرور + تأكيد) -->
+        <div id="firstTimeFields" class="hidden">
+            <p style="font-size: 13px; color: #d9534f; margin-bottom: 5px;">هذه المدرسة تسجل لأول مرة، يرجى تعيين كلمة مرور جديدة:</p>
+            <input type="password" id="newPassword" placeholder="أدخل كلمة المرور">
+            <input type="password" id="confirmPassword" placeholder="تأكيد كلمة المرور">
+            <button class="btn" style="background: #28a745;" onclick="setupAndLogin()">حفظ والدخول</button>
+        </div>
+
+        <!-- تظهر في المرات اللاحقة (كلمة المرور فقط) -->
+        <div id="normalLoginFields" class="hidden">
+            <input type="password" id="loginPassword" placeholder="أدخل كلمة المرور الخاصة بالمدير">
+            <button class="btn" onclick="verifyPasswordAndLogin()">تسجيل الدخول</button>
+        </div>
+    </div>
+
     <div id="errorMsg"></div>
 </div>
 
-<!-- مكتبات Firebase (نسخة Compat لتتطابق مع صفحة الأدمن) -->
+<!-- مكتبات Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
@@ -41,7 +65,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    window.loginToSchool = async () => {
+    // الخطوة الأولى: التحقق من كود المدرسة وحالة كلمة المرور والموقع
+    window.checkSchoolCode = async () => {
         const code = document.getElementById('schoolCodeInput').value.trim();
         const errorMsg = document.getElementById('errorMsg');
         
@@ -64,10 +89,11 @@
             }
 
             const schoolData = schoolSnap.data();
+            document.getElementById('verifiedSchoolCode').value = code;
 
-            // فحص هل الموقع الجغرافي مثبت مسبقاً؟ (بفحص lat و lon)
+            // التحقق أولاً من تثبيت الموقع الجغرافي (GPS) إذا لم يكن مثبتآً
             if (!schoolData.lat || !schoolData.lon || schoolData.lat === 0 || schoolData.lon === 0) {
-                errorMsg.innerText = "يرجى السماح بتحديد الموقع الجغرافي (GPS) لتثبيت موقع المدرسة لأول مرة...";
+                errorMsg.innerText = "جاري تثبيت موقع المدرسة عبر الـ GPS لأول مرة...";
                 
                 if (!navigator.geolocation) {
                     errorMsg.style.color = "red";
@@ -75,42 +101,115 @@
                     return;
                 }
 
-                navigator.geolocation.getCurrentPosition(
-                    async (position) => {
-                        try {
-                            const lat = position.coords.latitude;
-                            const lon = position.coords.longitude;
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+                    });
+                    
+                    await schoolRef.update({ 
+                        lat: position.coords.latitude, 
+                        lon: position.coords.longitude 
+                    });
+                } catch (err) {
+                    errorMsg.style.color = "red";
+                    errorMsg.innerText = "يجب الموافقة على إذن الموقع الجغرافي (GPS) للمتابعة.";
+                    return;
+                }
+            }
 
-                            // حفظ الإحداثيات مباشرة في صفحة الأدمن وقاعدة البيانات بنفس تسمية حقل lon
-                            await schoolRef.update({ lat: lat, lon: lon });
+            // إخفاء حقل الكود وإظهار حقول كلمة المرور
+            document.getElementById('stepCode').classList.add('hidden');
+            document.getElementById('stepPassword').classList.remove('hidden');
+            errorMsg.innerText = "";
 
-                            errorMsg.style.color = "green";
-                            errorMsg.innerText = "تم تثبيت موقع المدرسة بنجاح! جاري الدخول...";
-                            
-                            setTimeout(() => {
-                                window.location.href = `dashboard.html?school=${code}`;
-                            }, 1000);
-                        } catch (err) {
-                            console.error(err);
-                            errorMsg.style.color = "red";
-                            errorMsg.innerText = "فشل حفظ الإحداثيات في قاعدة البيانات.";
-                        }
-                    },
-                    (error) => {
-                        errorMsg.style.color = "red";
-                        errorMsg.innerText = "يجب الموافقة على إذن الموقع الجغرافي (GPS) لمرة واحدة لدخول لوحة التحكم.";
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
+            // فحص هل توجد كلمة مرور مسجلة مسبقاً في القاعدة؟
+            if (!schoolData.password) {
+                // المرة الأولى: إظهار مربعي الإنشاء والتأكيد
+                document.getElementById('firstTimeFields').classList.remove('hidden');
+                document.getElementById('instructionText').innerText = "قم بإنشاء كلمة مرور جديدة لمدير المدرسة";
             } else {
-                // إذا كانت الإحداثيات مسجلة مسبقاً، الدخول المباشر إلى لوحة التحكم
-                window.location.href = `dashboard.html?school=${code}`;
+                // المرات اللاحقة: إظهار مربع واحد للدخول
+                document.getElementById('normalLoginFields').classList.remove('hidden');
+                document.getElementById('instructionText').innerText = "أدخل كلمة المرور الخاصة بلوحة التحكم";
             }
 
         } catch (e) {
             console.error(e);
             errorMsg.style.color = "red";
             errorMsg.innerText = "حدث خطأ في الاتصال بقاعدة البيانات.";
+        }
+    };
+
+    // حفظ كلمة المرور للمرة الأولى وتأكيدها
+    window.setupAndLogin = async () => {
+        const code = document.getElementById('verifiedSchoolCode').value;
+        const p1 = document.getElementById('newPassword').value.trim();
+        const p2 = document.getElementById('confirmPassword').value.trim();
+        const errorMsg = document.getElementById('errorMsg');
+
+        if (!p1 || !p2) {
+            errorMsg.style.color = "red";
+            errorMsg.innerText = "يرجى تعيين كلمة المرور وتأكيدها!";
+            return;
+        }
+
+        if (p1 !== p2) {
+            errorMsg.style.color = "red";
+            errorMsg.innerText = "كلمتا المرور غير متطابقتين!";
+            return;
+        }
+
+        try {
+            errorMsg.style.color = "#007bff";
+            errorMsg.innerText = "جاري حفظ كلمة المرور والدخول...";
+
+            await db.collection("schools").doc(code).update({ password: p1 });
+
+            errorMsg.style.color = "green";
+            errorMsg.innerText = "تم حفظ كلمة المرور بنجاح! جاري التوجيه...";
+            
+            setTimeout(() => {
+                window.location.href = `dashboard.html?school=${code}&admin=true`;
+            }, 1000);
+
+        } catch (err) {
+            console.error(err);
+            errorMsg.style.color = "red";
+            errorMsg.innerText = "فشل حفظ كلمة المرور في قاعدة البيانات.";
+        }
+    };
+
+    // التحقق من كلمة المرور في المرات اللاحقة
+    window.verifyPasswordAndLogin = async () => {
+        const code = document.getElementById('verifiedSchoolCode').value;
+        const enteredPass = document.getElementById('loginPassword').value.trim();
+        const errorMsg = document.getElementById('errorMsg');
+
+        if (!enteredPass) {
+            errorMsg.style.color = "red";
+            errorMsg.innerText = "يرجى إدخال كلمة المرور!";
+            return;
+        }
+
+        try {
+            const schoolSnap = await db.collection("schools").doc(code).get();
+            const schoolData = schoolSnap.data();
+
+            if (schoolData.password && schoolData.password === enteredPass) {
+                errorMsg.style.color = "green";
+                errorMsg.innerText = "كلمة المرور صحيحة! جاري الدخول...";
+                setTimeout(() => {
+                    window.location.href = `dashboard.html?school=${code}&admin=true`;
+                }, 800);
+            } else {
+                errorMsg.style.color = "red";
+                errorMsg.innerText = "كلمة المرور غير صحيحة، حاول مرة أخرى.";
+            }
+
+        } catch (err) {
+            console.error(err);
+            errorMsg.style.color = "red";
+            errorMsg.innerText = "حدث خطأ أثناء التحقق من كلمة المرور.";
         }
     };
 </script>
