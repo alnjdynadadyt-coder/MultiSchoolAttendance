@@ -17,6 +17,8 @@
         .info-label { font-weight: bold; color: #444; }
         .info-value { color: #111; font-weight: bold; }
     </style>
+    <!-- استدعاء الملف المركزي للقواعد -->
+    <script src="attendance-rules.js"></script>
 </head>
 <body>
 <div class="container">
@@ -73,7 +75,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // استخراج معرف المدرسة من الرابط (مثال: employee.html?school=n1)
+    // استخراج معرف المدرسة من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const schoolId = urlParams.get('school');
 
@@ -87,6 +89,7 @@
     }
 
     let isLocationVerified = false;
+    let schoolShiftType = "morning_only"; // القيمة الافتراضية
 
     // دالة لحساب المسافة الدقيقة بالأمتار بين إحداثيات المدرسة وإحداثيات المستخدم
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -100,7 +103,7 @@
         return R * c;
     }
 
-    // التحقق من موقع المدرسة وإحداثياتها المسجلة من لوحة المشرف
+    // التحقق من موقع المدرسة وإحداثياتها ونوع الدوام المسجل
     async function initSchoolAndLocation() {
         const msgDiv = document.getElementById('statusMsg');
         try {
@@ -113,6 +116,7 @@
             }
 
             const schoolData = schoolDoc.data();
+            schoolShiftType = schoolData.shiftType || "morning_only";
             document.getElementById('pageTitle').innerText = `تسجيل الحضور - ${schoolData.name}`;
 
             if (schoolData.lat === undefined || schoolData.lon === undefined || (schoolData.lat === 0 && schoolData.lon === 0)) {
@@ -169,17 +173,7 @@
 
     initSchoolAndLocation();
 
-    const getLimit = (type, dayIndex, timeInput) => {
-        const [h, m] = timeInput.split(':').map(Number);
-        const timeVal = h * 60 + m;
-        if (type === "حارس") return (timeVal < 12 * 60) ? "07:10" : "17:10";
-        if (type === "موظف") return (timeVal < 11 * 60) ? "07:10" : "12:10";
-        if (type === "إداري") return "07:40";
-        if (type === "مدرس") return "08:10";
-        return "08:10";
-    };
-
-    // دالة تسجيل الحضور والانصراف المرتبطة بزرار الواجهة
+    // دالة تسجيل الحضور والانصراف المرتبطة بأزرار الواجهة وتعتمد على محرك القواعد المركزي
     window.registerAttendance = async function(action) {
         if (!isLocationVerified) return alert("الموقع غير مؤكد أو أنك خارج النطاق المسموح (100 متر)!");
         
@@ -187,7 +181,6 @@
         if (!code) return alert("يرجى إدخال كود الموظف!");
 
         try {
-            // جلب الموظف من سياق المدرسة المحددة
             const empDoc = await db.collection("schools").doc(schoolId).collection("employees").doc(code).get();
             if (!empDoc.exists) return alert("كود الموظف غير صحيح أو غير تابع لهذه المدرسة!");
             
@@ -195,10 +188,7 @@
             const nowObj = new Date();
             const currentDate = nowObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' });
             const currentDayName = nowObj.toLocaleDateString('ar-EG', { weekday: 'long', timeZone: 'Asia/Baghdad' });
-            const dayIndex = nowObj.getDay();
-            const now = nowObj.toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Asia/Baghdad' });
-
-            let status = (now > getLimit(empData.type, dayIndex, now)) ? "متأخر" : "حاضر";
+            const nowTime = nowObj.toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit', hour12: false, timeZone: 'Asia/Baghdad' });
 
             // جلب سجلات الحضور الخاصة بهذه المدرسة
             const attSnapshot = await db.collection("schools").doc(schoolId).collection("attendance")
@@ -241,20 +231,29 @@
                     return;
                 }
 
+                // استخدام محرك القواعد المركزي للتحقق من السماح بالحضور
+                const evaluation = evaluateAttendanceRules(schoolShiftType, empData.type, 'attendance', nowTime);
+                if (!evaluation.allowed) {
+                    alert(evaluation.message);
+                    return;
+                }
+                let status = evaluation.status || "حاضر";
+
                 await db.collection("schools").doc(schoolId).collection("attendance").add({ 
                     empCode: code, 
                     name: empData.name, 
                     status, 
-                    time: now, 
+                    time: nowTime, 
                     exitTime: "", 
                     date: currentDate, 
                     day: currentDayName,
-                    reason: "-"
+                    reason: "-",
+                    leaveImage: ""
                 });
 
                 document.getElementById('cardEmpName').innerText = empData.name;
                 document.getElementById('cardDate').innerText = `${currentDayName} - ${currentDate}`;
-                document.getElementById('cardTime').innerText = now;
+                document.getElementById('cardTime').innerText = nowTime;
                 document.getElementById('cardExit').innerText = "---";
                 document.getElementById('exitRow').style.display = "none";
                 document.getElementById('cardStatus').innerText = status;
@@ -269,17 +268,15 @@
                     return;
                 }
 
-                if (["مدرس", "إداري", "موظف"].includes(empData.type)) {
-                    const [h, m] = now.split(':').map(Number);
-                    const timeVal = h * 60 + m;
-                    if (timeVal < 11 * 60) {
-                        alert("عذراً، لا يمكن تسجيل الانصراف قبل الساعة 11:00 صباحاً لهذه الفئة!");
-                        return;
-                    }
+                // استخدام محرك القواعد المركزي للتحقق من السماح بالانصراف
+                const evaluation = evaluateAttendanceRules(schoolShiftType, empData.type, 'exit', nowTime);
+                if (!evaluation.allowed) {
+                    alert(evaluation.message);
+                    return;
                 }
 
                 await db.collection("schools").doc(schoolId).collection("attendance").doc(targetDocId).update({ 
-                    exitTime: now, 
+                    exitTime: nowTime, 
                     exitDate: currentDate,
                     exitDay: currentDayName
                 });
@@ -287,7 +284,7 @@
                 document.getElementById('cardEmpName').innerText = empData.name;
                 document.getElementById('cardDate').innerText = `${existingData.day || ''} - ${existingData.date}`;
                 document.getElementById('cardTime').innerText = existingData.time || "---";
-                document.getElementById('cardExit').innerText = now;
+                document.getElementById('cardExit').innerText = nowTime;
                 
                 if (currentDate !== existingData.date) {
                     document.getElementById('exitRow').style.display = "flex";
