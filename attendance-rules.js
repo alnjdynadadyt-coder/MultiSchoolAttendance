@@ -1,4 +1,4 @@
-// محرك القواعد الموحد لتسجيل الحضور والانصراف (بدون قيود وقت بداية التسجيل المبكر)
+// محرك القواعد الموحد لتسجيل الحضور والانصراف (مع الاستنتاج الذكي للفترات عبر الرابط الخارجي)
 
 // دالة لحساب الدقائق من نص الوقت (مثال "08:10" إلى دقائق)
 function timeToMinutes(timeStr) {
@@ -28,10 +28,9 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
         return { allowed: true, status, message: "تم احتساب حضور الحارس بنجاح." };
     }
 
-    // 2. المدارس ذات الدوام الثلاثي (triple_shift)
+    // 2. المدارس ذات الدوام الثلاثي (triple_shift) - الاستنتاج التلقائي حسب وقت التسجيل
     if (schoolShiftType === "triple_shift") {
-        // تحديد الفترة بناءً على الوقت الحالي (الصباحية، الثانية، الثالثة)
-        // الفترة الأولى (حتى قبل 10:20)
+        // الفترة الأولى (إذا سجل قبل 10:20 صباحاً)
         if (currentMin < timeToMinutes("10:20")) {
             if (actionType === 'exit') {
                 if (currentMin < timeToMinutes("10:00")) return { allowed: false, message: "عذراً، لا يمكن تسجيل المغادرة قبل الساعة 10:00 صباحاً للفترة الأولى." };
@@ -41,10 +40,10 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
             if (empType === "موظف") limit = "07:10";
             if (empType === "إداري") limit = "07:50";
             const status = (currentMin > timeToMinutes(limit)) ? "متأخر" : "حاضر";
-            return { allowed: true, status, message: "تم التسجيل للفترة الأولى." };
+            return { allowed: true, status, message: "تم التسجيل للفترة الأولى (الصباحية)." };
         }
         
-        // الفترة الثانية (من 10:20 وحتى قبل 1:30 ظهراً)
+        // الفترة الثانية (إذا سجل بين 10:20 وقبل 1:30 ظهراً)
         if (currentMin >= timeToMinutes("10:20") && currentMin < timeToMinutes("13:30")) {
             if (actionType === 'exit') {
                 if (currentMin < timeToMinutes("13:00")) return { allowed: false, message: "عذراً، لا يمكن تسجيل المغادرة قبل الساعة 1:00 ظهراً للفترة الثانية." };
@@ -57,7 +56,7 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
             return { allowed: true, status, message: "تم التسجيل للفترة الثانية." };
         }
 
-        // الفترة الثالثة (من 1:30 ظهراً فصاعداً)
+        // الفترة الثالثة (إذا سجل من 1:30 ظهراً فصاعداً)
         if (currentMin >= timeToMinutes("13:30")) {
             if (actionType === 'exit') {
                 if (currentMin < timeToMinutes("16:00")) return { allowed: false, message: "عذراً، لا يمكن تسجيل المغادرة قبل الساعة 4:00 عصراً للفترة الثالثة." };
@@ -96,9 +95,9 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
         return { allowed: true, status, message: "تم التسجيل للدوام الصباحي الاعتيادي." };
     }
 
-    // 4. المدارس المزدوجة (dual_afternoon) - فترتين (صباحية أو ظهر)
+    // 4. المدارس المزدوجة (dual_afternoon) - استنتاج تلقائي (صباحي أم ظهر)
     if (schoolShiftType === "dual_afternoon") {
-        // الفترة الصباحية للمدرسة المزدوجة (أقل من 11:30)
+        // إذا كان التسجيل قبل الساعة 11:30 (يعتبر دواماً صباحياً)
         if (currentMin < timeToMinutes("11:30")) {
             if (actionType === 'exit') {
                 if (currentMin < timeToMinutes("11:00")) return { allowed: false, message: "عذراً، لا يمكن تسجيل الانصراف قبل الساعة 11:00 صباحاً." };
@@ -111,7 +110,7 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
             return { allowed: true, status, message: "تم التسجيل للفترة الصباحية للدوام المزدوج." };
         }
 
-        // الفترة الثانية (الظهر) للمدرسة المزدوجة (من 11:30 فصاعداً)
+        // إذا كان التسجيل من 11:30 فصاعداً (يعتبر دوام ظهر)
         if (currentMin >= timeToMinutes("11:30")) {
             if (actionType === 'exit') {
                 if (currentMin < timeToMinutes("15:40")) return { allowed: false, message: "عذراً، لا يمكن تسجيل المغادرة قبل الساعة 3:40 عصراً." };
