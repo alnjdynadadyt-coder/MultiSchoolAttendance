@@ -1,4 +1,4 @@
-// محرك القواعد الموحد لتسجيل الحضور والانصراف (الدوام الأحادي، المزدوج، الثلاثي، والخفارة، والحارس)
+// محرك القواعد الموحد لتسجيل الحضور والانصراف (أحادية، مزدوجة، ثلاثية، مسائية بحته، والحارس)
 
 // دالة لحساب الدقائق من نص الوقت (مثال "08:10" إلى دقائق)
 function timeToMinutes(timeStr) {
@@ -16,9 +16,6 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
         if (actionType === 'exit') {
             return { allowed: true, status: "حاضر", message: "مسموح بالانصراف للحارس في أي وقت." };
         }
-        // الحارس لديه فترتان (صباحية ومسائية)
-        // الفترة الصباحية: التسجيل متاح، الحد الأقصى للحضور 07:10 (بعدها متأخر)
-        // الفترة المسائية: الحد الأقصى للحضور 17:10 (5:10 عصراً) بعدها متأخر
         const limitMorning = timeToMinutes("07:10");
         const limitEvening = timeToMinutes("17:10");
         
@@ -75,19 +72,19 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
         return { allowed: false, message: "عذراً، وقت التسجيل خارج الفترات المعتمدة للدوام الثلاثي." };
     }
 
-    // 3. المدارس الأحادية مع خفارة الظهيرة للموظفين
+    // 3. المدارس الأحادية (morning_only) مع خفارة الظهيرة للموظفين
     if (schoolShiftType === "morning_only") {
-        // فحص خفارة الظهيرة للموظف (بين 11:30 و 12:10)
+        // فحص خفارة الظهيرة للموظف (بين 11:30 و 13:00)
         if (empType === "موظف" && currentMin >= timeToMinutes("11:30") && currentMin <= timeToMinutes("13:00")) {
             if (actionType === 'exit') {
                 if (currentMin < timeToMinutes("16:30")) return { allowed: false, message: "عذراً، لا يمكن تسجيل مغادرة الخفارة قبل الساعة 4:30 عصراً." };
                 return { allowed: true, message: "مسموح بالانصراف." };
             }
             const status = (currentMin > timeToMinutes("12:10")) ? "متأخر" : "حاضر";
-            return { allowed: true, status, message: "تم تسجیل خفارة الظهيرة بنجاح." };
+            return { allowed: true, status, message: "تم تسجيل خفارة الظهيرة بنجاح." };
         }
 
-        // الدوام الصباحي الاعتيادي
+        // الدوام الصباحي الاعتيادي للأحادية
         if (actionType === 'exit') {
             if (currentMin < timeToMinutes("11:00")) return { allowed: false, message: "عذراً، لا يمكن تسجيل الانصراف قبل الساعة 11:00 صباحاً." };
             return { allowed: true, message: "مسموح بالانصراف." };
@@ -100,19 +97,47 @@ function evaluateAttendanceRules(schoolShiftType, empType, actionType, currentTi
         return { allowed: true, status, message: "تم التسجيل للدوام الصباحي الاعتيادي." };
     }
 
-    // 4. المدارس المزدوجة أو المسائية (Dual / Evening)
-    if (schoolShiftType === "dual_afternoon" || schoolShiftType === "evening_only") {
-        // إذا كان التسجيل في فترة الظهر/المساء
+    // 4. المدارس المزدوجة (dual_afternoon) - فترتين (صباحية أو ظهر)
+    if (schoolShiftType === "dual_afternoon") {
+        // الفترة الصباحية للمدرسة المزدوجة (نفس الأحادية)
+        if (currentMin < timeToMinutes("11:30")) {
+            if (actionType === 'exit') {
+                if (currentMin < timeToMinutes("11:00")) return { allowed: false, message: "عذراً، لا يمكن تسجيل الانصراف قبل الساعة 11:00 صباحاً." };
+                return { allowed: true, message: "مسموح بالانصراف." };
+            }
+            let limit = "08:10"; // مدرس
+            if (empType === "موظف") limit = "07:10";
+            if (empType === "إداري") limit = "07:50";
+            const status = (currentMin > timeToMinutes(limit)) ? "متأخر" : "حاضر";
+            return { allowed: true, status, message: "تم التسجيل للفترة الصباحية للدوام المزدوج." };
+        }
+
+        // الفترة الثانية (الظهر) للمدرسة المزدوجة (تبدأ من 11:30)
         if (currentMin >= timeToMinutes("11:30")) {
             if (actionType === 'exit') {
-                if (currentMin < timeToMinutes("15:45")) return { allowed: false, message: "عذراً، لا يمكن تسجيل المغادرة قبل الساعة 3:45 / 3:50 عصراً." };
+                if (currentMin < timeToMinutes("15:40")) return { allowed: false, message: "عذراً، لا يمكن تسجيل المغادرة قبل الساعة 3:40 عصراً." };
                 return { allowed: true, message: "مسموح بالانصراف." };
             }
             let limit = "13:10"; // مدرس
-            if (empType === "موظف") limit = "12:35";
+            if (empType === "موظف") limit = "12:30";
             if (empType === "إداري") limit = "12:50";
             const status = (currentMin > timeToMinutes(limit)) ? "متأخر" : "حاضر";
-            return { allowed: true, status, message: "تم التسجيل لفترة الظهر/المساء." };
+            return { allowed: true, status, message: "تم التسجيل لفترة الظهر للدوام المزدوج." };
+        }
+    }
+
+    // 5. المدارس المسائية البحتة (evening_only) - مستقلة تماماً
+    if (schoolShiftType === "evening_only") {
+        if (currentMin >= timeToMinutes("12:00")) {
+            if (actionType === 'exit') {
+                if (currentMin < timeToMinutes("15:40")) return { allowed: false, message: "عذراً، لا يمكن تسجيل المغادرة قبل الساعة 3:40 عصراً." };
+                return { allowed: true, message: "مسموح بالانصراف." };
+            }
+            let limit = "14:10"; // مدرس (2:10)
+            if (empType === "موظف") limit = "13:35"; // (1:35)
+            if (empType === "إداري") limit = "13:50"; // (1:50)
+            const status = (currentMin > timeToMinutes(limit)) ? "متأخر" : "حاضر";
+            return { allowed: true, status, message: "تم التسجيل للدوام المسائي البحت." };
         }
     }
 
